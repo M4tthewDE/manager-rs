@@ -1,0 +1,17 @@
+syntax = "proto3";
+package docker;
+
+service Docker {
+    rpc ListContainers (Empty) returns (ContainerListReply);
+}
+
+message Empty {}
+
+message ContainerListReply {
+    repeated Container containerList = 1;
+}
+
+message Container {
+    string name = 1;
+    string image = 2;
+}
