@@ -22,7 +22,10 @@ impl Docker for DockerService {
     ) -> Result<Response<ContainerListReply>, Status> {
         info!("REQUEST: {request:?}");
 
-        let containers = docker::list_containers().await.unwrap();
+        let containers = docker::list_containers()
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
         let container_list: Vec<Container> = containers
             .iter()
             .map(|c| Container {

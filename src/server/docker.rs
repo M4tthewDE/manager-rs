@@ -1,8 +1,7 @@
+use anyhow::Result;
 use http_body_util::BodyExt;
 use prost::bytes::Buf;
 use serde::Deserialize;
-use std::error::Error;
-
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper_util::client::legacy::Client;
@@ -17,7 +16,7 @@ pub struct Container {
     pub image: String,
 }
 
-pub async fn list_containers() -> Result<Vec<Container>, Box<dyn Error + Send + Sync>> {
+pub async fn list_containers() -> Result<Vec<Container>> {
     let url = Uri::new("/var/run/docker.sock", "/v1.47/containers/json?all=true").into();
 
     let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
