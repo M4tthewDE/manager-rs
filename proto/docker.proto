@@ -14,4 +14,13 @@ message ContainerListReply {
 message Container {
     repeated string names = 1;
     string image = 2;
+    string command = 3;
+    int64 created = 4;
+    repeated Port ports = 5;
+    string status = 6;
+}
+message Port {
+    int64 privatePort = 1;
+    int64 publicPort = 2;
+    string port_type = 3;
 }

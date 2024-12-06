@@ -1,6 +1,6 @@
 use docker_proto::{
     docker_server::{Docker, DockerServer},
-    Container, ContainerListReply, Empty,
+    Container, ContainerListReply, Empty, Port,
 };
 use tonic::{transport::Server, Request, Response, Status};
 use tracing::info;
@@ -31,6 +31,18 @@ impl Docker for DockerService {
             .map(|c| Container {
                 names: c.names.clone(),
                 image: c.image.clone(),
+                command: c.command.clone(),
+                created: c.created,
+                ports: c
+                    .ports
+                    .iter()
+                    .map(|p| Port {
+                        private_port: p.private_port,
+                        public_port: p.public_port,
+                        port_type: p.port_type.clone(),
+                    })
+                    .collect(),
+                status: c.status.clone(),
             })
             .collect();
 
