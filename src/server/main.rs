@@ -1,12 +1,15 @@
-use docker::{
+use docker_proto::{
     docker_server::{Docker, DockerServer},
-    ContainerListReply, Empty,
+    Container, ContainerListReply, Empty,
 };
 use tonic::{transport::Server, Request, Response, Status};
+use tracing::info;
 
-mod docker {
+mod docker_proto {
     tonic::include_proto!("docker");
 }
+
+mod docker;
 
 #[derive(Debug, Default)]
 pub struct DockerService {}
@@ -17,16 +20,25 @@ impl Docker for DockerService {
         &self,
         request: Request<Empty>,
     ) -> Result<Response<ContainerListReply>, Status> {
-        println!("REQUEST: {request:?}");
+        info!("REQUEST: {request:?}");
 
-        Ok(Response::new(ContainerListReply {
-            container_list: vec![],
-        }))
+        let containers = docker::list_containers().await.unwrap();
+        let container_list: Vec<Container> = containers
+            .iter()
+            .map(|c| Container {
+                names: c.names.clone(),
+                image: c.image.clone(),
+            })
+            .collect();
+
+        Ok(Response::new(ContainerListReply { container_list }))
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     let addr = "[::1]:50051".parse()?;
     let docker = DockerService::default();
 

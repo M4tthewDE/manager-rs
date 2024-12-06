@@ -12,6 +12,6 @@ message ContainerListReply {
 }
 
 message Container {
-    string name = 1;
+    repeated string names = 1;
     string image = 2;
 }
