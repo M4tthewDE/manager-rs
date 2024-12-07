@@ -1,8 +1,6 @@
-use anyhow::{Context, Result};
 use humansize::DECIMAL;
-use std::path::PathBuf;
 
-use procfs::{FromRead, Meminfo};
+use crate::memory_proto::MemoryReply;
 
 pub struct Memory {
     pub total: String,
@@ -10,17 +8,22 @@ pub struct Memory {
     pub available: String,
 }
 
-pub fn calculate_memory() -> Result<Memory> {
-    let meminfo = Meminfo::from_file(PathBuf::from("/proc/meminfo"))?;
+impl Memory {
+    pub fn new(m: &MemoryReply) -> Self {
+        Self {
+            total: humansize::format_size(m.total, DECIMAL),
+            free: humansize::format_size(m.free, DECIMAL),
+            available: humansize::format_size(m.available, DECIMAL),
+        }
+    }
+}
 
-    Ok(Memory {
-        total: humansize::format_size(meminfo.mem_total, DECIMAL),
-        free: humansize::format_size(meminfo.mem_free, DECIMAL),
-        available: humansize::format_size(
-            meminfo
-                .mem_available
-                .context("no 'available' memory found")?,
-            DECIMAL,
-        ),
-    })
+impl Default for Memory {
+    fn default() -> Self {
+        Self {
+            total: "n/a".to_string(),
+            free: "n/a".to_string(),
+            available: "n/a".to_string(),
+        }
+    }
 }

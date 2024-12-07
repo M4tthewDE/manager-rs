@@ -10,6 +10,7 @@ mod docker_proto {
 }
 
 mod docker;
+mod memory;
 
 #[derive(Debug, Default)]
 pub struct DockerService {}
@@ -59,6 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .add_service(DockerServer::new(docker))
+        .add_service(memory::service())
         .serve(addr)
         .await?;
 

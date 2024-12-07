@@ -1,0 +1,15 @@
+syntax = "proto3";
+package memory;
+
+service Memory {
+    rpc GetMemory (Empty) returns (MemoryReply);
+}
+
+message Empty {}
+
+message MemoryReply {
+    uint64 total = 1;
+    uint64 free = 2;
+    uint64 available = 3;
+}
+

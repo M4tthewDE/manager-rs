@@ -6,12 +6,17 @@ use std::{
 use anyhow::Result;
 use docker::{docker_client::DockerClient, Container, Empty};
 use memory::Memory;
+use memory_proto::{memory_client::MemoryClient, MemoryReply};
 use tokio::runtime;
 
 mod memory;
 
 pub mod docker {
     tonic::include_proto!("docker");
+}
+
+pub mod memory_proto {
+    tonic::include_proto!("memory");
 }
 
 fn main() -> eframe::Result {
@@ -26,15 +31,22 @@ fn main() -> eframe::Result {
     )
 }
 
+type StateChangeMessage = Box<dyn FnMut(&mut State) + Send>;
+
 struct App {
     rt: runtime::Runtime,
 
+    state: State,
+    last_update: Instant,
+
+    tx: Sender<StateChangeMessage>,
+    rx: Receiver<StateChangeMessage>,
+}
+
+#[derive(Default)]
+struct State {
     containers: Vec<Container>,
     memory: Memory,
-
-    last_update: Instant,
-    tx: Sender<Vec<Container>>,
-    rx: Receiver<Vec<Container>>,
 }
 
 impl eframe::App for App {
@@ -47,20 +59,20 @@ impl eframe::App for App {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label("Total");
-                    ui.label(&self.memory.total);
+                    ui.label(&self.state.memory.total);
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Free");
-                    ui.label(&self.memory.free);
+                    ui.label(&self.state.memory.free);
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Available");
-                    ui.label(&self.memory.available);
+                    ui.label(&self.state.memory.available);
                 });
 
-                for container in &self.containers {
+                for container in &self.state.containers {
                     ui.horizontal(|ui| {
                         ui.label(container.names.first().unwrap());
                         ui.label(&container.image);
@@ -80,8 +92,7 @@ impl App {
         Ok(Self {
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
             last_update: Instant::now(),
-            containers: vec![],
-            memory: memory::calculate_memory()?,
+            state: State::default(),
             tx,
             rx,
         })
@@ -90,18 +101,26 @@ impl App {
     fn update_state(&mut self) -> Result<()> {
         if self.last_update.elapsed().as_secs() > 2 {
             let tx = self.tx.clone();
+
             self.rt.spawn(async move {
                 let containers = get_containers().await.unwrap();
-                tx.send(containers).unwrap();
-            });
+                tx.send(Box::new(move |state: &mut State| {
+                    state.containers = containers.clone()
+                }))
+                .unwrap();
 
-            self.memory = memory::calculate_memory()?;
+                let memory_reply = get_memory().await.unwrap();
+                tx.send(Box::new(move |state: &mut State| {
+                    state.memory = Memory::new(&memory_reply);
+                }))
+                .unwrap();
+            });
 
             self.last_update = Instant::now();
         }
 
-        if let Ok(containers) = self.rx.try_recv() {
-            self.containers = containers;
+        if let Ok(mut state_change_msg) = self.rx.try_recv() {
+            state_change_msg(&mut self.state);
         }
 
         Ok(())
@@ -113,4 +132,11 @@ async fn get_containers() -> Result<Vec<Container>> {
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
     Ok(response.get_ref().container_list.clone())
+}
+
+async fn get_memory() -> Result<MemoryReply> {
+    let mut client = MemoryClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(memory_proto::Empty {});
+    let response = client.get_memory(request).await?;
+    Ok(*response.get_ref())
 }
