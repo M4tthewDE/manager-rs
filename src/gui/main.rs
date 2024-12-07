@@ -103,7 +103,7 @@ impl App {
     }
 
     fn change_state(&mut self) {
-        if let Ok(mut state_change_msg) = self.rx.try_recv() {
+        if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
     }

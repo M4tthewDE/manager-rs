@@ -1,6 +1,7 @@
 use anyhow::Result;
 use docker::Container;
-use docker_proto::{docker_client::DockerClient, ContainerListReply, Empty};
+use docker_proto::{docker_client::DockerClient, Empty};
+use futures::future::{self, BoxFuture};
 use memory::Memory;
 use memory_proto::{memory_client::MemoryClient, MemoryReply};
 use std::sync::mpsc::Sender;
@@ -16,7 +17,7 @@ pub mod memory_proto {
     tonic::include_proto!("memory");
 }
 
-pub type StateChangeMessage = Box<dyn FnMut(&mut State) + Send + Sync>;
+pub type StateChangeMessage = Box<dyn Fn(&mut State) + Send + Sync>;
 
 #[derive(Default)]
 pub struct State {
@@ -25,33 +26,37 @@ pub struct State {
 }
 
 pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
-    let container_reply = get_containers().await?;
-    tx.send(Box::new(move |state: &mut State| {
-        state.containers = container_reply
-            .container_list
-            .iter()
-            .map(Container::new)
-            .collect()
-    }))?;
+    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> =
+        vec![Box::pin(update_memory()), Box::pin(update_containers())];
 
-    let memory_reply = get_memory().await?;
-    tx.send(Box::new(move |state: &mut State| {
-        state.memory = Memory::new(&memory_reply);
-    }))?;
+    for result in future::join_all(futures).await {
+        tx.send(result?)?;
+    }
 
     Ok(())
 }
 
-async fn get_containers() -> Result<ContainerListReply> {
+async fn update_containers() -> Result<StateChangeMessage> {
     let mut client = DockerClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
-    Ok(response.get_ref().clone())
+
+    Ok(Box::new(move |state: &mut State| {
+        state.containers = response
+            .get_ref()
+            .container_list
+            .iter()
+            .map(Container::new)
+            .collect()
+    }))
 }
 
-async fn get_memory() -> Result<MemoryReply> {
+async fn update_memory() -> Result<StateChangeMessage> {
     let mut client = MemoryClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(memory_proto::Empty {});
     let response = client.get_memory(request).await?;
-    Ok(*response.get_ref())
+
+    Ok(Box::new(move |state: &mut State| {
+        state.memory = Memory::new(response.get_ref());
+    }))
 }
