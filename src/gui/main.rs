@@ -2,24 +2,17 @@ use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
 };
+use tracing::error;
 
 use anyhow::Result;
-use docker::{docker_client::DockerClient, Container, Empty};
-use memory::Memory;
-use memory_proto::{memory_client::MemoryClient, MemoryReply};
+use state::{State, StateChangeMessage};
 use tokio::runtime;
 
-mod memory;
-
-pub mod docker {
-    tonic::include_proto!("docker");
-}
-
-pub mod memory_proto {
-    tonic::include_proto!("memory");
-}
+mod state;
 
 fn main() -> eframe::Result {
+    tracing_subscriber::fmt::init();
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
@@ -31,8 +24,6 @@ fn main() -> eframe::Result {
     )
 }
 
-type StateChangeMessage = Box<dyn FnMut(&mut State) + Send>;
-
 struct App {
     rt: runtime::Runtime,
 
@@ -43,18 +34,13 @@ struct App {
     rx: Receiver<StateChangeMessage>,
 }
 
-#[derive(Default)]
-struct State {
-    containers: Vec<Container>,
-    memory: Memory,
-}
-
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(Duration::from_millis(500));
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.update_state().unwrap();
+            self.change_state();
 
             ui.heading("Server manager");
 
@@ -76,7 +62,7 @@ impl eframe::App for App {
 
                 for container in &self.state.containers {
                     ui.horizontal(|ui| {
-                        ui.label(container.names.first().unwrap());
+                        ui.label(&container.name);
                         ui.label(&container.image);
                         ui.label(&container.status);
                     });
@@ -105,40 +91,20 @@ impl App {
             let tx = self.tx.clone();
 
             self.rt.spawn(async move {
-                let containers = get_containers().await.unwrap();
-                tx.send(Box::new(move |state: &mut State| {
-                    state.containers = containers.clone()
-                }))
-                .unwrap();
-
-                let memory_reply = get_memory().await.unwrap();
-                tx.send(Box::new(move |state: &mut State| {
-                    state.memory = Memory::new(&memory_reply);
-                }))
-                .unwrap();
+                if let Err(err) = state::update(tx).await {
+                    error!("Update error: {err:?}");
+                }
             });
 
             self.last_update = Instant::now();
         }
 
+        Ok(())
+    }
+
+    fn change_state(&mut self) {
         if let Ok(mut state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
-
-        Ok(())
     }
-}
-
-async fn get_containers() -> Result<Vec<Container>> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
-    let request = tonic::Request::new(Empty {});
-    let response = client.list_containers(request).await?;
-    Ok(response.get_ref().container_list.clone())
-}
-
-async fn get_memory() -> Result<MemoryReply> {
-    let mut client = MemoryClient::connect("http://[::1]:50051").await?;
-    let request = tonic::Request::new(memory_proto::Empty {});
-    let response = client.get_memory(request).await?;
-    Ok(*response.get_ref())
 }
