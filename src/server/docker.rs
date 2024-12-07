@@ -9,7 +9,6 @@ use hyperlocal::{UnixConnector, Uri};
 use prost::bytes::Buf;
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
-use tracing::info;
 
 mod docker_proto {
     tonic::include_proto!("docker");
@@ -68,10 +67,8 @@ pub struct DockerService {}
 impl docker_server::Docker for DockerService {
     async fn list_containers(
         &self,
-        request: Request<docker_proto::Empty>,
+        _: Request<docker_proto::Empty>,
     ) -> Result<Response<docker_proto::ContainerListReply>, Status> {
-        info!("REQUEST: {request:?}");
-
         let containers = list_containers()
             .await
             .map_err(|e| Status::from_error(e.into()))?;

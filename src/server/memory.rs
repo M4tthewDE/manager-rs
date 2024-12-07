@@ -3,7 +3,6 @@ use memory_proto::{
     Empty, MemoryReply,
 };
 use tonic::{Request, Response, Status};
-use tracing::info;
 
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -19,8 +18,7 @@ pub struct MemoryService {}
 
 #[tonic::async_trait]
 impl Memory for MemoryService {
-    async fn get_memory(&self, request: Request<Empty>) -> Result<Response<MemoryReply>, Status> {
-        info!("REQUEST: {request:?}");
+    async fn get_memory(&self, _: Request<Empty>) -> Result<Response<MemoryReply>, Status> {
         let meminfo = Meminfo::from_file(PathBuf::from("/proc/meminfo"))
             .map_err(|e| Status::from_error(e.into()))?;
 
