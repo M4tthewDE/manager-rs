@@ -1,6 +1,6 @@
 use std::{
     sync::mpsc::{self, Receiver, Sender},
-    time::Instant,
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -51,6 +51,8 @@ struct State {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.request_repaint_after(Duration::from_millis(500));
+
         egui::CentralPanel::default().show(ctx, |ui| {
             self.update_state().unwrap();
 
