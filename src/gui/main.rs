@@ -79,7 +79,7 @@ impl App {
 
         Ok(Self {
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
-            last_update: Instant::now(),
+            last_update: Instant::now() - Duration::from_secs(3),
             state: State::default(),
             tx,
             rx,
