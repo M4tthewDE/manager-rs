@@ -10,13 +10,26 @@ use std::{
 use tracing::error;
 
 use anyhow::Result;
+use serde::Deserialize;
 use state::{docker::Container, info::memory::Memory, State, StateChangeMessage};
+use std::path::PathBuf;
 use tokio::runtime;
 
 mod state;
 
+#[derive(Deserialize, Clone)]
+struct Config {
+    update_interval: u64,
+}
+
 fn main() -> eframe::Result {
     tracing_subscriber::fmt::init();
+
+    let config: Config = toml::from_str(
+        &std::fs::read_to_string(PathBuf::from("config.toml"))
+            .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?,
+    )
+    .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?;
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
@@ -25,11 +38,12 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Server manager",
         options,
-        Box::new(|_cc| Ok(Box::new(App::new()?))),
+        Box::new(|_cc| Ok(Box::new(App::new(config)?))),
     )
 }
 
 struct App {
+    config: Config,
     rt: runtime::Runtime,
     profiler: bool,
 
@@ -80,7 +94,7 @@ impl eframe::App for App {
 }
 
 impl App {
-    fn new() -> Result<Self> {
+    fn new(config: Config) -> Result<Self> {
         let profiler = env::var("PROFILING").is_ok();
         if profiler {
             puffin::set_scopes_on(true);
@@ -89,8 +103,9 @@ impl App {
         let (tx, rx) = mpsc::channel();
 
         Ok(Self {
+            config: config.clone(),
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
-            last_update: Instant::now() - Duration::from_secs(3),
+            last_update: Instant::now() - Duration::from_millis(config.update_interval + 1000),
             state: State::default(),
             profiler,
             tx,
@@ -100,7 +115,7 @@ impl App {
 
     fn update_state(&mut self) -> Result<()> {
         puffin::profile_function!();
-        if self.last_update.elapsed().as_secs() > 2 {
+        if self.last_update.elapsed().as_millis() > self.config.update_interval.into() {
             let tx = self.tx.clone();
 
             self.rt.spawn(async move {

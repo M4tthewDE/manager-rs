@@ -34,6 +34,7 @@ tokio-util = "0.7.13"
 puffin = "0.19.1"
 puffin_egui = "0.29.0"
 sysinfo = "0.33.0"
+toml = "0.8.19"
 
 [build-dependencies]
 tonic-build = "*"
