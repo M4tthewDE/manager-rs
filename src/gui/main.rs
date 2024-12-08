@@ -1,4 +1,4 @@
-use egui::{Color32, RichText, ScrollArea, TextStyle, Ui};
+use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -158,22 +158,25 @@ impl App {
             });
         });
 
-        ui.label(RichText::new("Logs").color(Color32::WHITE));
-        ScrollArea::vertical()
-            .id_source(container.id.clone())
-            .max_height(100.0)
-            .auto_shrink([false, false])
-            .stick_to_bottom(true)
-            .show_rows(
-                ui,
-                ui.text_style_height(&TextStyle::Monospace),
-                container.logs.len(),
-                |ui, row_range| {
-                    for line in &container.logs[row_range.start..row_range.end] {
-                        ui.label(RichText::new(line).monospace());
-                    }
-                },
-            );
+        CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
+            .id_source(format!("{}-header", &container.id))
+            .show(ui, |ui| {
+                ScrollArea::vertical()
+                    .id_source(container.id.clone())
+                    .max_height(400.0)
+                    .auto_shrink([false, false])
+                    .stick_to_bottom(true)
+                    .show_rows(
+                        ui,
+                        ui.text_style_height(&TextStyle::Monospace),
+                        container.logs.len(),
+                        |ui, row_range| {
+                            for line in &container.logs[row_range.start..row_range.end] {
+                                ui.label(RichText::new(line).monospace());
+                            }
+                        },
+                    );
+            });
 
         ui.horizontal(|ui| {
             if ui.button("Start").clicked() {
