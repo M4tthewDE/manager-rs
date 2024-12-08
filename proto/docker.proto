@@ -3,6 +3,7 @@ package docker;
 
 service Docker {
     rpc ListContainers (Empty) returns (ContainerListReply);
+    rpc RemoveContainer (ContainerIdentifier) returns (Empty);
 }
 
 message Empty {}
@@ -20,8 +21,13 @@ message Container {
     string status = 6;
     string id = 7;
 }
+
 message Port {
     int64 privatePort = 1;
     int64 publicPort = 2;
     string port_type = 3;
+}
+
+message ContainerIdentifier {
+    string id = 1;
 }

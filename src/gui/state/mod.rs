@@ -1,6 +1,6 @@
 use anyhow::Result;
 use docker::Container;
-use docker_proto::{docker_client::DockerClient, Empty};
+use docker_proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 use futures::future::{self, BoxFuture};
 use memory::Memory;
 use memory_proto::{memory_client::MemoryClient, MemoryReply};
@@ -62,4 +62,12 @@ async fn update_memory() -> Result<StateChangeMessage> {
     Ok(Box::new(move |state: &mut State| {
         state.memory = memory;
     }))
+}
+
+pub async fn remove_container(id: String) -> Result<()> {
+    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(ContainerIdentifier { id });
+    client.remove_container(request).await?;
+
+    Ok(())
 }

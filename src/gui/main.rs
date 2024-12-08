@@ -48,59 +48,17 @@ impl eframe::App for App {
                 ui.separator();
 
                 ui.heading(RichText::new("Memory").color(Color32::WHITE));
-                memory(ui, &self.state.memory);
+                self.memory(ui, &self.state.memory);
                 ui.separator();
 
                 ui.heading(RichText::new("Docker").color(Color32::WHITE));
                 for c in &self.state.containers {
-                    container(ui, c);
+                    self.container(ui, c);
                     ui.separator();
                 }
             });
         });
     }
-}
-
-fn memory(ui: &mut Ui, memory: &Memory) {
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Total").color(Color32::WHITE));
-        ui.label(&memory.total);
-    });
-
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Free").color(Color32::WHITE));
-        ui.label(&memory.free);
-    });
-
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Available").color(Color32::WHITE));
-        ui.label(&memory.available);
-    });
-}
-
-fn container(ui: &mut Ui, container: &Container) {
-    ui.vertical(|ui| {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Id").color(Color32::WHITE));
-            ui.label(&container.id);
-        });
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Name").color(Color32::WHITE));
-            ui.label(&container.name);
-        });
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Image").color(Color32::WHITE));
-            ui.label(&container.image);
-        });
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Status").color(Color32::WHITE));
-            ui.label(&container.status);
-        });
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Created").color(Color32::WHITE));
-            ui.label(&container.created);
-        });
-    });
 }
 
 impl App {
@@ -136,5 +94,64 @@ impl App {
         if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
+    }
+
+    fn memory(&self, ui: &mut Ui, memory: &Memory) {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Total").color(Color32::WHITE));
+            ui.label(&memory.total);
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Free").color(Color32::WHITE));
+            ui.label(&memory.free);
+        });
+
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Available").color(Color32::WHITE));
+            ui.label(&memory.available);
+        });
+    }
+
+    fn container(&self, ui: &mut Ui, container: &Container) {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Id").color(Color32::WHITE));
+                ui.label(&container.id);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Name").color(Color32::WHITE));
+                ui.label(&container.name);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Image").color(Color32::WHITE));
+                ui.label(&container.image);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Status").color(Color32::WHITE));
+                ui.label(&container.status);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Created").color(Color32::WHITE));
+                ui.label(&container.created);
+            });
+            if ui.button("Remove").clicked() {
+                self.remove_container(container.id.clone())
+            }
+        });
+    }
+
+    fn remove_container(&self, id: String) {
+        let tx = self.tx.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) = state::remove_container(id).await {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx).await {
+                error!("{err:?}");
+            }
+        });
     }
 }

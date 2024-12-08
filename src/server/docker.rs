@@ -1,3 +1,4 @@
+use anyhow::bail;
 use anyhow::Result;
 use docker_proto::docker_server;
 use http_body_util::BodyExt;
@@ -63,6 +64,30 @@ async fn list_containers() -> Result<Vec<Container>> {
     Ok(containers)
 }
 
+#[derive(Deserialize, Debug)]
+struct Error {
+    #[allow(dead_code)]
+    message: String,
+}
+
+async fn remove_container(id: &str) -> Result<()> {
+    let url = Uri::new("/var/run/docker.sock", &format!("/v1.47/containers/{}", id));
+    let req = hyper::Request::builder()
+        .uri(url)
+        .method("DELETE")
+        .body(Full::from(""))?;
+
+    let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
+    let res = client.request(req).await?;
+    if res.status() != 204 {
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("{error:?}")
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Default)]
 pub struct DockerService {}
 
@@ -100,6 +125,17 @@ impl docker_server::Docker for DockerService {
         Ok(Response::new(docker_proto::ContainerListReply {
             container_list,
         }))
+    }
+
+    async fn remove_container(
+        &self,
+        request: Request<docker_proto::ContainerIdentifier>,
+    ) -> Result<Response<docker_proto::Empty>, Status> {
+        remove_container(&request.get_ref().id)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(docker_proto::Empty {}))
     }
 }
 
