@@ -11,5 +11,6 @@ message MemoryReply {
     uint64 total = 1;
     uint64 free = 2;
     uint64 available = 3;
+    uint64 used = 4;
 }
 

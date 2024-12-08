@@ -132,6 +132,11 @@ impl App {
                 ui.label(RichText::new("Available").color(Color32::WHITE));
                 ui.label(&memory.available);
             });
+
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Used").color(Color32::WHITE));
+                ui.label(&memory.used);
+            });
         });
     }
 

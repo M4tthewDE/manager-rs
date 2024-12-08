@@ -2,12 +2,10 @@ use memory_proto::{
     memory_server::{Memory, MemoryServer},
     Empty, MemoryReply,
 };
+use sysinfo::System;
 use tonic::{Request, Response, Status};
 
-use anyhow::{Context, Result};
-use std::path::PathBuf;
-
-use procfs::{FromRead, Meminfo};
+use anyhow::Result;
 
 mod memory_proto {
     tonic::include_proto!("memory");
@@ -19,16 +17,14 @@ pub struct MemoryService {}
 #[tonic::async_trait]
 impl Memory for MemoryService {
     async fn get_memory(&self, _: Request<Empty>) -> Result<Response<MemoryReply>, Status> {
-        let meminfo = Meminfo::from_file(PathBuf::from("/proc/meminfo"))
-            .map_err(|e| Status::from_error(e.into()))?;
+        let mut sys = System::new_all();
+        sys.refresh_all();
 
         Ok(Response::new(MemoryReply {
-            total: meminfo.mem_total,
-            free: meminfo.mem_free,
-            available: meminfo
-                .mem_available
-                .context("no available memory found")
-                .map_err(|e| Status::from_error(e.into()))?,
+            total: sys.total_memory(),
+            free: sys.free_memory(),
+            available: sys.available_memory(),
+            used: sys.used_memory(),
         }))
     }
 }
