@@ -4,6 +4,8 @@ package docker;
 service Docker {
     rpc ListContainers (Empty) returns (ContainerListReply);
     rpc RemoveContainer (ContainerIdentifier) returns (Empty);
+    rpc StopContainer (ContainerIdentifier) returns (Empty);
+    rpc StartContainer (ContainerIdentifier) returns (Empty);
 }
 
 message Empty {}

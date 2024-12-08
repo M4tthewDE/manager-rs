@@ -64,6 +64,22 @@ async fn update_memory() -> Result<StateChangeMessage> {
     }))
 }
 
+pub async fn start_container(id: String) -> Result<()> {
+    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(ContainerIdentifier { id });
+    client.start_container(request).await?;
+
+    Ok(())
+}
+
+pub async fn stop_container(id: String) -> Result<()> {
+    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(ContainerIdentifier { id });
+    client.stop_container(request).await?;
+
+    Ok(())
+}
+
 pub async fn remove_container(id: String) -> Result<()> {
     let mut client = DockerClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(ContainerIdentifier { id });

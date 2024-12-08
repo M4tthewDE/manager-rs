@@ -135,8 +135,44 @@ impl App {
                 ui.label(RichText::new("Created").color(Color32::WHITE));
                 ui.label(&container.created);
             });
-            if ui.button("Remove").clicked() {
-                self.remove_container(container.id.clone())
+            ui.horizontal(|ui| {
+                if ui.button("Start").clicked() {
+                    self.start_container(container.id.clone())
+                }
+                if ui.button("Stop").clicked() {
+                    self.stop_container(container.id.clone())
+                }
+                if ui.button("Remove").clicked() {
+                    self.remove_container(container.id.clone())
+                }
+            });
+        });
+    }
+
+    fn start_container(&self, id: String) {
+        let tx = self.tx.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) = state::start_container(id).await {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx).await {
+                error!("{err:?}");
+            }
+        });
+    }
+
+    fn stop_container(&self, id: String) {
+        let tx = self.tx.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) = state::stop_container(id).await {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx).await {
+                error!("{err:?}");
             }
         });
     }

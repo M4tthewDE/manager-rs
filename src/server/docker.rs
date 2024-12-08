@@ -70,6 +70,48 @@ struct Error {
     message: String,
 }
 
+async fn start_container(id: &str) -> Result<()> {
+    let url = Uri::new(
+        "/var/run/docker.sock",
+        &format!("/v1.47/containers/{}/start", id),
+    );
+    let req = hyper::Request::builder()
+        .uri(url)
+        .method("POST")
+        .body(Full::from(""))?;
+
+    let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
+    let res = client.request(req).await?;
+    if res.status() != 204 && res.status() != 304 {
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("{error:?}")
+    }
+
+    Ok(())
+}
+
+async fn stop_container(id: &str) -> Result<()> {
+    let url = Uri::new(
+        "/var/run/docker.sock",
+        &format!("/v1.47/containers/{}/stop", id),
+    );
+    let req = hyper::Request::builder()
+        .uri(url)
+        .method("POST")
+        .body(Full::from(""))?;
+
+    let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
+    let res = client.request(req).await?;
+    if res.status() != 204 && res.status() != 304 {
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("{error:?}")
+    }
+
+    Ok(())
+}
+
 async fn remove_container(id: &str) -> Result<()> {
     let url = Uri::new("/var/run/docker.sock", &format!("/v1.47/containers/{}", id));
     let req = hyper::Request::builder()
@@ -125,6 +167,28 @@ impl docker_server::Docker for DockerService {
         Ok(Response::new(docker_proto::ContainerListReply {
             container_list,
         }))
+    }
+
+    async fn start_container(
+        &self,
+        request: Request<docker_proto::ContainerIdentifier>,
+    ) -> Result<Response<docker_proto::Empty>, Status> {
+        start_container(&request.get_ref().id)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(docker_proto::Empty {}))
+    }
+
+    async fn stop_container(
+        &self,
+        request: Request<docker_proto::ContainerIdentifier>,
+    ) -> Result<Response<docker_proto::Empty>, Status> {
+        stop_container(&request.get_ref().id)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(docker_proto::Empty {}))
     }
 
     async fn remove_container(
