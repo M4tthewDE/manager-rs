@@ -54,10 +54,12 @@ impl eframe::App for App {
 
                 ui.group(|ui| {
                     ui.heading(RichText::new("Docker container").color(Color32::WHITE));
-                    for c in &self.state.containers {
-                        ui.separator();
-                        self.container(ui, c);
-                    }
+                    ScrollArea::vertical().id_source("docker").show(ui, |ui| {
+                        for c in &self.state.containers {
+                            ui.separator();
+                            self.container(ui, c);
+                        }
+                    });
                 });
             });
 
