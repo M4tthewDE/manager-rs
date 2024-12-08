@@ -6,6 +6,7 @@ message Empty {}
 service System {
     rpc GetMemory (Empty) returns (MemoryReply);
     rpc GetDisks (Empty) returns (DiskReply);
+    rpc GetInfo (Empty) returns (InfoReply);
 }
 
 
@@ -26,6 +27,13 @@ message Disk {
     string file_system = 3;
     uint64 total_space = 4;
     uint64 available_space = 5;
+}
+
+message InfoReply {
+    string name = 1;
+    string kernel_version = 2;
+    string os_version = 3;
+    string host_name = 4;
 }
 
 service Docker {

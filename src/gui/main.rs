@@ -1,4 +1,5 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
+use state::info::Info;
 use state::memory::Disk;
 use std::env;
 use std::{
@@ -52,13 +53,16 @@ impl eframe::App for App {
                 ui.heading(RichText::new("Server manager").color(Color32::WHITE));
                 ui.add_space(10.0);
 
-                self.memory(ui, &self.state.memory);
+                ui.horizontal(|ui| {
+                    self.info(ui, &self.state.info);
+                    self.memory(ui, &self.state.memory);
+                });
                 ui.add_space(10.0);
 
                 self.disks(ui, &self.state.disks);
                 ui.add_space(10.0);
 
-                ui.heading(RichText::new("Docker container").color(Color32::WHITE));
+                ui.heading(RichText::new("Docker").color(Color32::WHITE));
                 ScrollArea::vertical().id_source("docker").show(ui, |ui| {
                     for c in &self.state.containers {
                         self.container(ui, c);
@@ -140,6 +144,35 @@ impl App {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Used").color(Color32::WHITE));
                     ui.label(&memory.used);
+                });
+            });
+        });
+    }
+
+    fn info(&self, ui: &mut Ui, info: &Info) {
+        puffin::profile_function!();
+
+        ui.vertical(|ui| {
+            ui.heading(RichText::new("Info").color(Color32::WHITE));
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Name").color(Color32::WHITE));
+                    ui.label(&info.name);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Kernel version").color(Color32::WHITE));
+                    ui.label(&info.kernel_version);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("OS version").color(Color32::WHITE));
+                    ui.label(&info.os_version);
+                });
+
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Host name").color(Color32::WHITE));
+                    ui.label(&info.host_name);
                 });
             });
         });

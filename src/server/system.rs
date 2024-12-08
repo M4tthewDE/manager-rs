@@ -1,6 +1,6 @@
 use crate::proto::{
     system_server::{System, SystemServer},
-    Disk, DiskReply, Empty, MemoryReply,
+    Disk, DiskReply, Empty, InfoReply, MemoryReply,
 };
 use sysinfo::Disks;
 use tonic::{Request, Response, Status};
@@ -41,6 +41,15 @@ impl System for SystemService {
             .collect();
 
         Ok(Response::new(DiskReply { disks }))
+    }
+
+    async fn get_info(&self, _: Request<Empty>) -> Result<Response<InfoReply>, Status> {
+        Ok(Response::new(InfoReply {
+            name: sysinfo::System::name().unwrap_or_default(),
+            kernel_version: sysinfo::System::kernel_version().unwrap_or_default(),
+            os_version: sysinfo::System::os_version().unwrap_or_default(),
+            host_name: sysinfo::System::host_name().unwrap_or_default(),
+        }))
     }
 }
 
