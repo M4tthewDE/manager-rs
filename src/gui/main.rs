@@ -49,17 +49,16 @@ impl eframe::App for App {
 
             ui.vertical(|ui| {
                 ui.heading(RichText::new("Server manager").color(Color32::WHITE));
-                ui.separator();
 
-                ui.heading(RichText::new("Memory").color(Color32::WHITE));
                 self.memory(ui, &self.state.memory);
-                ui.separator();
 
-                ui.heading(RichText::new("Docker").color(Color32::WHITE));
-                for c in &self.state.containers {
-                    self.container(ui, c);
-                    ui.separator();
-                }
+                ui.group(|ui| {
+                    ui.heading(RichText::new("Docker container").color(Color32::WHITE));
+                    for c in &self.state.containers {
+                        ui.separator();
+                        self.container(ui, c);
+                    }
+                });
             });
 
             if self.profiler {
@@ -114,19 +113,23 @@ impl App {
 
     fn memory(&self, ui: &mut Ui, memory: &Memory) {
         puffin::profile_function!();
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Total").color(Color32::WHITE));
-            ui.label(&memory.total);
-        });
 
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Free").color(Color32::WHITE));
-            ui.label(&memory.free);
-        });
+        ui.group(|ui| {
+            ui.heading(RichText::new("Memory").color(Color32::WHITE));
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Total").color(Color32::WHITE));
+                ui.label(&memory.total);
+            });
 
-        ui.horizontal(|ui| {
-            ui.label(RichText::new("Available").color(Color32::WHITE));
-            ui.label(&memory.available);
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Free").color(Color32::WHITE));
+                ui.label(&memory.free);
+            });
+
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Available").color(Color32::WHITE));
+                ui.label(&memory.available);
+            });
         });
     }
 
@@ -153,34 +156,35 @@ impl App {
                 ui.label(RichText::new("Created").color(Color32::WHITE));
                 ui.label(&container.created);
             });
+        });
 
-            ui.label(RichText::new("Logs").color(Color32::WHITE));
-            ScrollArea::vertical()
-                .id_source(container.id.clone())
-                .max_height(100.0)
-                .auto_shrink([false, false])
-                .show_rows(
-                    ui,
-                    ui.text_style_height(&TextStyle::Monospace),
-                    container.logs.len(),
-                    |ui, row_range| {
-                        for line in &container.logs[row_range.start..row_range.end] {
-                            ui.label(RichText::new(line).monospace());
-                        }
-                    },
-                );
+        ui.label(RichText::new("Logs").color(Color32::WHITE));
+        ScrollArea::vertical()
+            .id_source(container.id.clone())
+            .max_height(100.0)
+            .auto_shrink([false, false])
+            .stick_to_bottom(true)
+            .show_rows(
+                ui,
+                ui.text_style_height(&TextStyle::Monospace),
+                container.logs.len(),
+                |ui, row_range| {
+                    for line in &container.logs[row_range.start..row_range.end] {
+                        ui.label(RichText::new(line).monospace());
+                    }
+                },
+            );
 
-            ui.horizontal(|ui| {
-                if ui.button("Start").clicked() {
-                    self.start_container(container.id.clone())
-                }
-                if ui.button("Stop").clicked() {
-                    self.stop_container(container.id.clone())
-                }
-                if ui.button("Remove").clicked() {
-                    self.remove_container(container.id.clone())
-                }
-            });
+        ui.horizontal(|ui| {
+            if ui.button("Start").clicked() {
+                self.start_container(container.id.clone())
+            }
+            if ui.button("Stop").clicked() {
+                self.stop_container(container.id.clone())
+            }
+            if ui.button("Remove").clicked() {
+                self.remove_container(container.id.clone())
+            }
         });
     }
 
