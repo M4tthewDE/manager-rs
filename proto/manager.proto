@@ -4,21 +4,18 @@ package manager;
 message Empty {}
 
 service System {
-    rpc GetMemory (Empty) returns (MemoryReply);
-    rpc GetDisks (Empty) returns (DiskReply);
     rpc GetInfo (Empty) returns (InfoReply);
-    rpc GetCpus (Empty) returns (CpusReply);
 }
 
 
-message MemoryReply {
+message MemoryInfo {
     uint64 total = 1;
     uint64 free = 2;
     uint64 available = 3;
     uint64 used = 4;
 }
 
-message DiskReply {
+message DiskInfo {
     repeated Disk disks = 1;
 }
 
@@ -35,9 +32,13 @@ message InfoReply {
     string kernel_version = 2;
     string os_version = 3;
     string host_name = 4;
+
+    MemoryInfo memoryInfo = 5;
+    DiskInfo diskInfo = 6;
+    CpuInfo cpuInfo = 7;
 }
 
-message CpusReply {
+message CpuInfo {
     repeated Cpu cpus = 1;
 }
 

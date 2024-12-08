@@ -1,5 +1,6 @@
-use crate::state::MemoryReply;
 use humansize::DECIMAL;
+
+use super::proto::MemoryInfo;
 
 pub struct Memory {
     pub total: String,
@@ -9,7 +10,7 @@ pub struct Memory {
 }
 
 impl Memory {
-    pub fn new(m: &MemoryReply) -> Self {
+    pub fn new(m: &MemoryInfo) -> Self {
         Self {
             total: humansize::format_size(m.total, DECIMAL),
             free: humansize::format_size(m.free, DECIMAL),

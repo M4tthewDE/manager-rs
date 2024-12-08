@@ -56,12 +56,12 @@ impl eframe::App for App {
 
                 ui.horizontal(|ui| {
                     self.info(ui, &self.state.info);
-                    self.memory(ui, &self.state.memory);
-                    self.cpus(ui, &self.state.cpus);
+                    self.memory(ui, &self.state.info.memory);
+                    self.cpus(ui, &self.state.info.cpus);
                 });
                 ui.add_space(10.0);
 
-                self.disks(ui, &self.state.disks);
+                self.disks(ui, &self.state.info.disks);
                 ui.add_space(10.0);
 
                 ui.heading(RichText::new("Docker").color(Color32::WHITE));

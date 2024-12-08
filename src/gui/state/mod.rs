@@ -1,12 +1,12 @@
 use anyhow::Result;
-use cpu::Cpu;
 use docker::Container;
 use futures::future::{self, BoxFuture};
 use info::Info;
-use memory::{Disk, Memory};
+use proto::system_client::SystemClient;
 use proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
-use proto::{system_client::SystemClient, MemoryReply};
 use std::sync::mpsc::Sender;
+use std::time::{Duration, Instant};
+use tracing::warn;
 
 pub mod cpu;
 pub mod docker;
@@ -22,23 +22,21 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 #[derive(Default)]
 pub struct State {
     pub containers: Vec<Container>,
-    pub memory: Memory,
-    pub disks: Vec<Disk>,
     pub info: Info,
-    pub cpus: Vec<Cpu>,
 }
 
 pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
-    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
-        Box::pin(update_memory()),
-        Box::pin(update_containers()),
-        Box::pin(update_disks()),
-        Box::pin(update_info()),
-        Box::pin(update_cpus()),
-    ];
+    let start = Instant::now();
+    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> =
+        vec![Box::pin(update_containers()), Box::pin(update_info())];
 
     for result in future::join_all(futures).await {
         tx.send(result?)?;
+    }
+
+    let elapsed = Instant::now() - start;
+    if elapsed > Duration::from_millis(500) {
+        warn!("Update time: {elapsed:?}");
     }
 
     Ok(())
@@ -67,28 +65,6 @@ async fn get_logs(id: String) -> Result<Vec<String>> {
     Ok(response.get_ref().lines.clone())
 }
 
-async fn update_memory() -> Result<StateChangeMessage> {
-    let mut client = SystemClient::connect("http://[::1]:50051").await?;
-    let request = tonic::Request::new(proto::Empty {});
-    let response = client.get_memory(request).await?;
-    let memory = Memory::new(response.get_ref());
-
-    Ok(Box::new(move |state: &mut State| {
-        state.memory = memory;
-    }))
-}
-
-async fn update_disks() -> Result<StateChangeMessage> {
-    let mut client = SystemClient::connect("http://[::1]:50051").await?;
-    let request = tonic::Request::new(proto::Empty {});
-    let response = client.get_disks(request).await?;
-    let disks = response.get_ref().disks.iter().map(Disk::new).collect();
-
-    Ok(Box::new(move |state: &mut State| {
-        state.disks = disks;
-    }))
-}
-
 async fn update_info() -> Result<StateChangeMessage> {
     let mut client = SystemClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(proto::Empty {});
@@ -97,17 +73,6 @@ async fn update_info() -> Result<StateChangeMessage> {
 
     Ok(Box::new(move |state: &mut State| {
         state.info = info;
-    }))
-}
-
-async fn update_cpus() -> Result<StateChangeMessage> {
-    let mut client = SystemClient::connect("http://[::1]:50051").await?;
-    let request = tonic::Request::new(proto::Empty {});
-    let response = client.get_cpus(request).await?;
-    let cpus = response.get_ref().cpus.iter().map(Cpu::new).collect();
-
-    Ok(Box::new(move |state: &mut State| {
-        state.cpus = cpus;
     }))
 }
 
