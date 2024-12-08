@@ -18,7 +18,7 @@ impl System for SystemService {
         );
 
         std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-        sys.refresh_cpu_all();
+        sys.refresh_all();
 
         let cpus = sys
             .cpus()
