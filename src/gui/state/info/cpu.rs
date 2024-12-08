@@ -6,7 +6,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(c: &super::proto::Cpu) -> Self {
+    pub fn new(c: &crate::state::proto::Cpu) -> Self {
         Self {
             name: c.name.clone(),
             usage: c.cpu_usage,

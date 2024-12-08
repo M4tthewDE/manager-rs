@@ -8,10 +8,8 @@ use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 use tracing::warn;
 
-pub mod cpu;
 pub mod docker;
 pub mod info;
-pub mod memory;
 
 mod proto {
     tonic::include_proto!("manager");

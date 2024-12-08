@@ -1,7 +1,7 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
-use state::cpu::Cpu;
+use state::info::cpu::Cpu;
+use state::info::disk::Disk;
 use state::info::Info;
-use state::memory::Disk;
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -10,7 +10,7 @@ use std::{
 use tracing::error;
 
 use anyhow::Result;
-use state::{docker::Container, memory::Memory, State, StateChangeMessage};
+use state::{docker::Container, info::memory::Memory, State, StateChangeMessage};
 use tokio::runtime;
 
 mod state;

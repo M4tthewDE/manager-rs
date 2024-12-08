@@ -1,8 +1,12 @@
-use super::{
-    cpu::Cpu,
-    memory::{Disk, Memory},
-    proto::InfoReply,
-};
+use cpu::Cpu;
+use disk::Disk;
+use memory::Memory;
+
+use super::proto::InfoReply;
+
+pub mod cpu;
+pub mod disk;
+pub mod memory;
 
 #[derive(Default)]
 pub struct Info {
