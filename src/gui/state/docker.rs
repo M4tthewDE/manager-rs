@@ -14,12 +14,13 @@ pub struct Container {
 
 impl Container {
     pub fn new(c: &docker_proto::Container) -> Result<Self> {
+        let created = DateTime::from_timestamp(c.created, 0).unwrap();
         Ok(Self {
             id: c.id.clone(),
             name: c.names.join(", "),
             image: c.image.clone(),
             status: c.status.clone(),
-            created: HumanTime::from(DateTime::from_timestamp(c.created, 0).unwrap()).to_string(),
+            created: format!("{} ({:?})", HumanTime::from(created), created),
         })
     }
 }

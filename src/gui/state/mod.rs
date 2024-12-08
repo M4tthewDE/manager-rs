@@ -45,7 +45,7 @@ async fn update_containers() -> Result<StateChangeMessage> {
         .get_ref()
         .container_list
         .iter()
-        .map(|c| Container::new(c))
+        .map(Container::new)
         .collect::<Result<Vec<Container>>>()?;
 
     Ok(Box::new(move |state: &mut State| {
