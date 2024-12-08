@@ -1,7 +1,7 @@
 use tonic::transport::Server;
 
 mod docker;
-mod memory;
+mod system;
 
 mod proto {
     tonic::include_proto!("manager");
@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .add_service(docker::service())
-        .add_service(memory::service())
+        .add_service(system::service())
         .serve(addr)
         .await?;
 
