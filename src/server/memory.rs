@@ -1,8 +1,8 @@
 use memory_proto::{
     memory_server::{Memory, MemoryServer},
-    Empty, MemoryReply,
+    Disk, DiskReply, Empty, MemoryReply,
 };
-use sysinfo::System;
+use sysinfo::{Disks, System};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
@@ -26,6 +26,25 @@ impl Memory for MemoryService {
             available: sys.available_memory(),
             used: sys.used_memory(),
         }))
+    }
+
+    async fn get_disks(&self, _: Request<Empty>) -> Result<Response<DiskReply>, Status> {
+        let mut sys = System::new_all();
+        sys.refresh_all();
+
+        let disks = Disks::new_with_refreshed_list()
+            .list()
+            .iter()
+            .map(|d| Disk {
+                name: d.name().to_str().unwrap_or_default().to_string(),
+                kind: d.kind().to_string(),
+                file_system: d.file_system().to_str().unwrap_or_default().to_string(),
+                total_space: d.total_space(),
+                available_space: d.available_space(),
+            })
+            .collect();
+
+        Ok(Response::new(DiskReply { disks }))
     }
 }
 

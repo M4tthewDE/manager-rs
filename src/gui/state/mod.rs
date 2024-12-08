@@ -2,7 +2,7 @@ use anyhow::Result;
 use docker::Container;
 use docker_proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 use futures::future::{self, BoxFuture};
-use memory::Memory;
+use memory::{Disk, Memory};
 use memory_proto::{memory_client::MemoryClient, MemoryReply};
 use std::sync::mpsc::Sender;
 
@@ -23,11 +23,15 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 pub struct State {
     pub containers: Vec<Container>,
     pub memory: Memory,
+    pub disks: Vec<Disk>,
 }
 
 pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
-    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> =
-        vec![Box::pin(update_memory()), Box::pin(update_containers())];
+    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
+        Box::pin(update_memory()),
+        Box::pin(update_containers()),
+        Box::pin(update_disks()),
+    ];
 
     for result in future::join_all(futures).await {
         tx.send(result?)?;
@@ -67,6 +71,17 @@ async fn update_memory() -> Result<StateChangeMessage> {
 
     Ok(Box::new(move |state: &mut State| {
         state.memory = memory;
+    }))
+}
+
+async fn update_disks() -> Result<StateChangeMessage> {
+    let mut client = MemoryClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(memory_proto::Empty {});
+    let response = client.get_disks(request).await?;
+    let disks = response.get_ref().disks.iter().map(Disk::new).collect();
+
+    Ok(Box::new(move |state: &mut State| {
+        state.disks = disks;
     }))
 }
 

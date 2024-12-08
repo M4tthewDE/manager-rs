@@ -1,4 +1,5 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
+use state::memory::Disk;
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -49,17 +50,19 @@ impl eframe::App for App {
 
             ui.vertical(|ui| {
                 ui.heading(RichText::new("Server manager").color(Color32::WHITE));
+                ui.add_space(10.0);
 
                 self.memory(ui, &self.state.memory);
+                ui.add_space(10.0);
 
-                ui.group(|ui| {
-                    ui.heading(RichText::new("Docker container").color(Color32::WHITE));
-                    ScrollArea::vertical().id_source("docker").show(ui, |ui| {
-                        for c in &self.state.containers {
-                            ui.separator();
-                            self.container(ui, c);
-                        }
-                    });
+                self.disks(ui, &self.state.disks);
+                ui.add_space(10.0);
+
+                ui.heading(RichText::new("Docker container").color(Color32::WHITE));
+                ScrollArea::vertical().id_source("docker").show(ui, |ui| {
+                    for c in &self.state.containers {
+                        self.container(ui, c);
+                    }
                 });
             });
 
@@ -116,85 +119,123 @@ impl App {
     fn memory(&self, ui: &mut Ui, memory: &Memory) {
         puffin::profile_function!();
 
-        ui.group(|ui| {
+        ui.vertical(|ui| {
             ui.heading(RichText::new("Memory").color(Color32::WHITE));
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Total").color(Color32::WHITE));
-                ui.label(&memory.total);
-            });
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Total").color(Color32::WHITE));
+                    ui.label(&memory.total);
+                });
 
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Free").color(Color32::WHITE));
-                ui.label(&memory.free);
-            });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Free").color(Color32::WHITE));
+                    ui.label(&memory.free);
+                });
 
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Available").color(Color32::WHITE));
-                ui.label(&memory.available);
-            });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Available").color(Color32::WHITE));
+                    ui.label(&memory.available);
+                });
 
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Used").color(Color32::WHITE));
+                    ui.label(&memory.used);
+                });
+            });
+        });
+    }
+
+    fn disks(&self, ui: &mut Ui, disks: &[Disk]) {
+        ui.vertical(|ui| {
+            ui.heading(RichText::new("Disks").color(Color32::WHITE));
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Used").color(Color32::WHITE));
-                ui.label(&memory.used);
+                for d in disks {
+                    ui.group(|ui| {
+                        ui.vertical(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("Name").color(Color32::WHITE));
+                                ui.label(&d.name);
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("Kind").color(Color32::WHITE));
+                                ui.label(&d.kind);
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("File System").color(Color32::WHITE));
+                                ui.label(&d.file_system);
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("Total").color(Color32::WHITE));
+                                ui.label(&d.total_space);
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new("Available").color(Color32::WHITE));
+                                ui.label(&d.available_space);
+                            });
+                        });
+                    });
+                }
             });
         });
     }
 
     fn container(&self, ui: &mut Ui, container: &Container) {
         puffin::profile_function!();
-        ui.vertical(|ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Id").color(Color32::WHITE));
-                ui.label(&container.id);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Name").color(Color32::WHITE));
-                ui.label(&container.name);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Image").color(Color32::WHITE));
-                ui.label(&container.image);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Status").color(Color32::WHITE));
-                ui.label(&container.status);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Created").color(Color32::WHITE));
-                ui.label(&container.created);
-            });
-        });
-
-        CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
-            .id_source(format!("{}-header", &container.id))
-            .show(ui, |ui| {
-                ScrollArea::vertical()
-                    .id_source(container.id.clone())
-                    .max_height(400.0)
-                    .auto_shrink([false, false])
-                    .stick_to_bottom(true)
-                    .show_rows(
-                        ui,
-                        ui.text_style_height(&TextStyle::Monospace),
-                        container.logs.len(),
-                        |ui, row_range| {
-                            for line in &container.logs[row_range.start..row_range.end] {
-                                ui.label(RichText::new(line).monospace());
-                            }
-                        },
-                    );
+        ui.group(|ui| {
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Id").color(Color32::WHITE));
+                    ui.label(&container.id);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Name").color(Color32::WHITE));
+                    ui.label(&container.name);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Image").color(Color32::WHITE));
+                    ui.label(&container.image);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Status").color(Color32::WHITE));
+                    ui.label(&container.status);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Created").color(Color32::WHITE));
+                    ui.label(&container.created);
+                });
             });
 
-        ui.horizontal(|ui| {
-            if ui.button("Start").clicked() {
-                self.start_container(container.id.clone())
-            }
-            if ui.button("Stop").clicked() {
-                self.stop_container(container.id.clone())
-            }
-            if ui.button("Remove").clicked() {
-                self.remove_container(container.id.clone())
-            }
+            CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
+                .id_source(format!("{}-header", &container.id))
+                .show(ui, |ui| {
+                    ScrollArea::vertical()
+                        .id_source(container.id.clone())
+                        .max_height(400.0)
+                        .auto_shrink([false, false])
+                        .stick_to_bottom(true)
+                        .show_rows(
+                            ui,
+                            ui.text_style_height(&TextStyle::Monospace),
+                            container.logs.len(),
+                            |ui, row_range| {
+                                for line in &container.logs[row_range.start..row_range.end] {
+                                    ui.label(RichText::new(line).monospace());
+                                }
+                            },
+                        );
+                });
+
+            ui.horizontal(|ui| {
+                if ui.button("Start").clicked() {
+                    self.start_container(container.id.clone())
+                }
+                if ui.button("Stop").clicked() {
+                    self.stop_container(container.id.clone())
+                }
+                if ui.button("Remove").clicked() {
+                    self.remove_container(container.id.clone())
+                }
+            });
         });
     }
 
