@@ -1,5 +1,32 @@
 syntax = "proto3";
-package docker;
+package manager;
+
+message Empty {}
+
+service Memory {
+    rpc GetMemory (Empty) returns (MemoryReply);
+    rpc GetDisks (Empty) returns (DiskReply);
+}
+
+
+message MemoryReply {
+    uint64 total = 1;
+    uint64 free = 2;
+    uint64 available = 3;
+    uint64 used = 4;
+}
+
+message DiskReply {
+    repeated Disk disks = 1;
+}
+
+message Disk {
+    string name = 1;
+    string kind = 2;
+    string file_system = 3;
+    uint64 total_space = 4;
+    uint64 available_space = 5;
+}
 
 service Docker {
     rpc ListContainers (Empty) returns (ContainerListReply);
@@ -8,8 +35,6 @@ service Docker {
     rpc StartContainer (ContainerIdentifier) returns (Empty);
     rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
 }
-
-message Empty {}
 
 message ContainerListReply {
     repeated Container containerList = 1;

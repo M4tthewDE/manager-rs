@@ -1,4 +1,4 @@
-use memory_proto::{
+use crate::proto::{
     memory_server::{Memory, MemoryServer},
     Disk, DiskReply, Empty, MemoryReply,
 };
@@ -6,10 +6,6 @@ use sysinfo::{Disks, System};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
-
-mod memory_proto {
-    tonic::include_proto!("memory");
-}
 
 #[derive(Debug, Default)]
 pub struct MemoryService {}

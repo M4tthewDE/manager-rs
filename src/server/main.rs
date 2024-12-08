@@ -3,6 +3,10 @@ use tonic::transport::Server;
 mod docker;
 mod memory;
 
+mod proto {
+    tonic::include_proto!("manager");
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();

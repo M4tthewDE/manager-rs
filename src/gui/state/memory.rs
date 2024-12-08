@@ -39,7 +39,7 @@ pub struct Disk {
 }
 
 impl Disk {
-    pub fn new(d: &super::memory_proto::Disk) -> Self {
+    pub fn new(d: &super::proto::Disk) -> Self {
         Self {
             name: d.name.clone(),
             kind: d.kind.clone(),

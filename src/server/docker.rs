@@ -3,7 +3,6 @@ use tracing::{debug, error};
 
 use anyhow::bail;
 use anyhow::Result;
-use docker_proto::docker_server;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -14,9 +13,7 @@ use prost::bytes::Buf;
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
 
-mod docker_proto {
-    tonic::include_proto!("docker");
-}
+use crate::proto;
 
 #[derive(Deserialize, Debug)]
 struct Container {
@@ -167,18 +164,18 @@ async fn container_logs(id: &str) -> Result<Vec<String>> {
 pub struct DockerService {}
 
 #[tonic::async_trait]
-impl docker_server::Docker for DockerService {
+impl proto::docker_server::Docker for DockerService {
     async fn list_containers(
         &self,
-        _: Request<docker_proto::Empty>,
-    ) -> Result<Response<docker_proto::ContainerListReply>, Status> {
+        _: Request<proto::Empty>,
+    ) -> Result<Response<proto::ContainerListReply>, Status> {
         let containers = list_containers()
             .await
             .map_err(|e| Status::from_error(e.into()))?;
 
-        let container_list: Vec<docker_proto::Container> = containers
+        let container_list: Vec<proto::Container> = containers
             .iter()
-            .map(|c| docker_proto::Container {
+            .map(|c| proto::Container {
                 id: c.id.clone(),
                 names: c.names.clone(),
                 image: c.image.clone(),
@@ -187,7 +184,7 @@ impl docker_server::Docker for DockerService {
                 ports: c
                     .ports
                     .iter()
-                    .map(|p| docker_proto::Port {
+                    .map(|p| proto::Port {
                         private_port: p.private_port,
                         public_port: p.public_port,
                         port_type: p.port_type.clone(),
@@ -197,50 +194,48 @@ impl docker_server::Docker for DockerService {
             })
             .collect();
 
-        Ok(Response::new(docker_proto::ContainerListReply {
-            container_list,
-        }))
+        Ok(Response::new(proto::ContainerListReply { container_list }))
     }
 
     async fn start_container(
         &self,
-        request: Request<docker_proto::ContainerIdentifier>,
-    ) -> Result<Response<docker_proto::Empty>, Status> {
+        request: Request<proto::ContainerIdentifier>,
+    ) -> Result<Response<proto::Empty>, Status> {
         start_container(&request.get_ref().id)
             .await
             .map_err(|e| Status::from_error(e.into()))?;
 
-        Ok(Response::new(docker_proto::Empty {}))
+        Ok(Response::new(proto::Empty {}))
     }
 
     async fn stop_container(
         &self,
-        request: Request<docker_proto::ContainerIdentifier>,
-    ) -> Result<Response<docker_proto::Empty>, Status> {
+        request: Request<proto::ContainerIdentifier>,
+    ) -> Result<Response<proto::Empty>, Status> {
         stop_container(&request.get_ref().id)
             .await
             .map_err(|e| Status::from_error(e.into()))?;
 
-        Ok(Response::new(docker_proto::Empty {}))
+        Ok(Response::new(proto::Empty {}))
     }
 
     async fn remove_container(
         &self,
-        request: Request<docker_proto::ContainerIdentifier>,
-    ) -> Result<Response<docker_proto::Empty>, Status> {
+        request: Request<proto::ContainerIdentifier>,
+    ) -> Result<Response<proto::Empty>, Status> {
         remove_container(&request.get_ref().id)
             .await
             .map_err(|e| Status::from_error(e.into()))?;
 
-        Ok(Response::new(docker_proto::Empty {}))
+        Ok(Response::new(proto::Empty {}))
     }
 
     async fn logs_container(
         &self,
-        request: Request<docker_proto::ContainerIdentifier>,
-    ) -> Result<Response<docker_proto::LogsReply>, Status> {
+        request: Request<proto::ContainerIdentifier>,
+    ) -> Result<Response<proto::LogsReply>, Status> {
         match container_logs(&request.get_ref().id).await {
-            Ok(lines) => Ok(Response::new(docker_proto::LogsReply { lines })),
+            Ok(lines) => Ok(Response::new(proto::LogsReply { lines })),
             Err(err) => {
                 error!("{err:?}");
                 Err(Status::from_error(err.into()))
@@ -249,6 +244,6 @@ impl docker_server::Docker for DockerService {
     }
 }
 
-pub fn service() -> docker_server::DockerServer<DockerService> {
-    docker_server::DockerServer::new(DockerService::default())
+pub fn service() -> proto::docker_server::DockerServer<DockerService> {
+    proto::docker_server::DockerServer::new(DockerService::default())
 }
