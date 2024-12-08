@@ -1,4 +1,5 @@
-use egui::{Color32, RichText, ScrollArea, Ui};
+use egui::{Color32, RichText, ScrollArea, TextStyle, Ui};
+use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
@@ -27,6 +28,7 @@ fn main() -> eframe::Result {
 
 struct App {
     rt: runtime::Runtime,
+    profiler: bool,
 
     state: State,
     last_update: Instant,
@@ -38,6 +40,8 @@ struct App {
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(Duration::from_millis(500));
+        puffin::profile_function!();
+        puffin::GlobalProfiler::lock().new_frame();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.update_state().unwrap();
@@ -57,25 +61,36 @@ impl eframe::App for App {
                     ui.separator();
                 }
             });
+
+            if self.profiler {
+                self.profiler = puffin_egui::profiler_window(ctx);
+            }
         });
     }
 }
 
 impl App {
     fn new() -> Result<Self> {
+        let profiler = env::var("PROFILING").is_ok();
+        if profiler {
+            puffin::set_scopes_on(true);
+        }
+
         let (tx, rx) = mpsc::channel();
 
         Ok(Self {
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
             last_update: Instant::now() - Duration::from_secs(3),
             state: State::default(),
+            profiler,
             tx,
             rx,
         })
     }
 
     fn update_state(&mut self) -> Result<()> {
-        if self.last_update.elapsed().as_secs() > 5 {
+        puffin::profile_function!();
+        if self.last_update.elapsed().as_secs() > 2 {
             let tx = self.tx.clone();
 
             self.rt.spawn(async move {
@@ -91,12 +106,14 @@ impl App {
     }
 
     fn change_state(&mut self) {
+        puffin::profile_function!();
         if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
     }
 
     fn memory(&self, ui: &mut Ui, memory: &Memory) {
+        puffin::profile_function!();
         ui.horizontal(|ui| {
             ui.label(RichText::new("Total").color(Color32::WHITE));
             ui.label(&memory.total);
@@ -114,6 +131,7 @@ impl App {
     }
 
     fn container(&self, ui: &mut Ui, container: &Container) {
+        puffin::profile_function!();
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("Id").color(Color32::WHITE));
@@ -136,14 +154,21 @@ impl App {
                 ui.label(&container.created);
             });
 
+            ui.label(RichText::new("Logs").color(Color32::WHITE));
             ScrollArea::vertical()
-                .id_salt(container.id.clone())
+                .id_source(container.id.clone())
                 .max_height(100.0)
-                .show(ui, |ui| {
-                    for line in &container.logs {
-                        ui.label(RichText::new(line).monospace());
-                    }
-                });
+                .auto_shrink([false, false])
+                .show_rows(
+                    ui,
+                    ui.text_style_height(&TextStyle::Monospace),
+                    container.logs.len(),
+                    |ui, row_range| {
+                        for line in &container.logs[row_range.start..row_range.end] {
+                            ui.label(RichText::new(line).monospace());
+                        }
+                    },
+                );
 
             ui.horizontal(|ui| {
                 if ui.button("Start").clicked() {
