@@ -3,7 +3,7 @@ use docker::Container;
 use futures::future::{self, BoxFuture};
 use memory::{Disk, Memory};
 use proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
-use proto::{memory_client::MemoryClient, MemoryReply};
+use proto::{system_client::SystemClient, MemoryReply};
 use std::sync::mpsc::Sender;
 
 pub mod docker;
@@ -60,7 +60,7 @@ async fn get_logs(id: String) -> Result<Vec<String>> {
 }
 
 async fn update_memory() -> Result<StateChangeMessage> {
-    let mut client = MemoryClient::connect("http://[::1]:50051").await?;
+    let mut client = SystemClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(proto::Empty {});
     let response = client.get_memory(request).await?;
     let memory = Memory::new(response.get_ref());
@@ -71,7 +71,7 @@ async fn update_memory() -> Result<StateChangeMessage> {
 }
 
 async fn update_disks() -> Result<StateChangeMessage> {
-    let mut client = MemoryClient::connect("http://[::1]:50051").await?;
+    let mut client = SystemClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(proto::Empty {});
     let response = client.get_disks(request).await?;
     let disks = response.get_ref().disks.iter().map(Disk::new).collect();

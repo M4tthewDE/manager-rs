@@ -1,19 +1,19 @@
 use crate::proto::{
-    memory_server::{Memory, MemoryServer},
+    system_server::{System, SystemServer},
     Disk, DiskReply, Empty, MemoryReply,
 };
-use sysinfo::{Disks, System};
+use sysinfo::Disks;
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
 
 #[derive(Debug, Default)]
-pub struct MemoryService {}
+pub struct SystemService {}
 
 #[tonic::async_trait]
-impl Memory for MemoryService {
+impl System for SystemService {
     async fn get_memory(&self, _: Request<Empty>) -> Result<Response<MemoryReply>, Status> {
-        let mut sys = System::new_all();
+        let mut sys = sysinfo::System::new_all();
         sys.refresh_all();
 
         Ok(Response::new(MemoryReply {
@@ -25,7 +25,7 @@ impl Memory for MemoryService {
     }
 
     async fn get_disks(&self, _: Request<Empty>) -> Result<Response<DiskReply>, Status> {
-        let mut sys = System::new_all();
+        let mut sys = sysinfo::System::new_all();
         sys.refresh_all();
 
         let disks = Disks::new_with_refreshed_list()
@@ -44,6 +44,6 @@ impl Memory for MemoryService {
     }
 }
 
-pub fn service() -> MemoryServer<MemoryService> {
-    MemoryServer::new(MemoryService::default())
+pub fn service() -> SystemServer<SystemService> {
+    SystemServer::new(SystemService::default())
 }

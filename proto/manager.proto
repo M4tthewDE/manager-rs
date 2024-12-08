@@ -3,7 +3,7 @@ package manager;
 
 message Empty {}
 
-service Memory {
+service System {
     rpc GetMemory (Empty) returns (MemoryReply);
     rpc GetDisks (Empty) returns (DiskReply);
 }
