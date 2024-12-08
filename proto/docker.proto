@@ -18,6 +18,7 @@ message Container {
     int64 created = 4;
     repeated Port ports = 5;
     string status = 6;
+    string id = 7;
 }
 message Port {
     int64 privatePort = 1;

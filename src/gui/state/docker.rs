@@ -5,6 +5,7 @@ use chrono_humanize::HumanTime;
 use super::docker_proto;
 
 pub struct Container {
+    pub id: String,
     pub name: String,
     pub image: String,
     pub status: String,
@@ -14,6 +15,7 @@ pub struct Container {
 impl Container {
     pub fn new(c: &docker_proto::Container) -> Result<Self> {
         Ok(Self {
+            id: c.id.clone(),
             name: c.names.join(", "),
             image: c.image.clone(),
             status: c.status.clone(),

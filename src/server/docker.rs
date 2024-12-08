@@ -16,6 +16,9 @@ mod docker_proto {
 
 #[derive(Deserialize, Debug)]
 struct Container {
+    #[serde(rename = "Id")]
+    id: String,
+
     #[serde(rename = "Names")]
     names: Vec<String>,
 
@@ -76,6 +79,7 @@ impl docker_server::Docker for DockerService {
         let container_list: Vec<docker_proto::Container> = containers
             .iter()
             .map(|c| docker_proto::Container {
+                id: c.id.clone(),
                 names: c.names.clone(),
                 image: c.image.clone(),
                 command: c.command.clone(),

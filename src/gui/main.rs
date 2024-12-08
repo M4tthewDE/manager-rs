@@ -81,6 +81,10 @@ fn memory(ui: &mut Ui, memory: &Memory) {
 fn container(ui: &mut Ui, container: &Container) {
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
+            ui.label(RichText::new("Id").color(Color32::WHITE));
+            ui.label(&container.id);
+        });
+        ui.horizontal(|ui| {
             ui.label(RichText::new("Name").color(Color32::WHITE));
             ui.label(&container.name);
         });
