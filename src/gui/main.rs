@@ -1,4 +1,5 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
+use state::cpu::Cpu;
 use state::info::Info;
 use state::memory::Disk;
 use std::env;
@@ -56,6 +57,7 @@ impl eframe::App for App {
                 ui.horizontal(|ui| {
                     self.info(ui, &self.state.info);
                     self.memory(ui, &self.state.memory);
+                    self.cpus(ui, &self.state.cpus);
                 });
                 ui.add_space(10.0);
 
@@ -175,6 +177,30 @@ impl App {
                     ui.label(&info.host_name);
                 });
             });
+        });
+    }
+
+    fn cpus(&self, ui: &mut Ui, cpus: &[Cpu]) {
+        ui.vertical(|ui| {
+            ui.heading(RichText::new("CPU").color(Color32::WHITE));
+            ui.group(|ui| {
+                egui::Grid::new("cpus").show(ui, |ui| {
+                    for (i, c) in cpus.iter().enumerate() {
+                        if i % 4 == 0 && i != 0 {
+                            ui.end_row();
+                        }
+                        App::cpu(ui, c);
+                    }
+                });
+            });
+        });
+    }
+
+    fn cpu(ui: &mut Ui, cpu: &Cpu) {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(&cpu.name).color(Color32::WHITE));
+            ui.label(&cpu.usage);
+            ui.label(&cpu.frequency);
         });
     }
 

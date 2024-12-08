@@ -1,4 +1,5 @@
 use anyhow::Result;
+use cpu::Cpu;
 use docker::Container;
 use futures::future::{self, BoxFuture};
 use info::Info;
@@ -7,6 +8,7 @@ use proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 use proto::{system_client::SystemClient, MemoryReply};
 use std::sync::mpsc::Sender;
 
+pub mod cpu;
 pub mod docker;
 pub mod info;
 pub mod memory;
@@ -23,6 +25,7 @@ pub struct State {
     pub memory: Memory,
     pub disks: Vec<Disk>,
     pub info: Info,
+    pub cpus: Vec<Cpu>,
 }
 
 pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
@@ -31,6 +34,7 @@ pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
         Box::pin(update_containers()),
         Box::pin(update_disks()),
         Box::pin(update_info()),
+        Box::pin(update_cpus()),
     ];
 
     for result in future::join_all(futures).await {
@@ -93,6 +97,17 @@ async fn update_info() -> Result<StateChangeMessage> {
 
     Ok(Box::new(move |state: &mut State| {
         state.info = info;
+    }))
+}
+
+async fn update_cpus() -> Result<StateChangeMessage> {
+    let mut client = SystemClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(proto::Empty {});
+    let response = client.get_cpus(request).await?;
+    let cpus = response.get_ref().cpus.iter().map(Cpu::new).collect();
+
+    Ok(Box::new(move |state: &mut State| {
+        state.cpus = cpus;
     }))
 }
 

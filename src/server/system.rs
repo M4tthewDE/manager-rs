@@ -1,8 +1,8 @@
 use crate::proto::{
     system_server::{System, SystemServer},
-    Disk, DiskReply, Empty, InfoReply, MemoryReply,
+    Cpu, CpusReply, Disk, DiskReply, Empty, InfoReply, MemoryReply,
 };
-use sysinfo::Disks;
+use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
@@ -50,6 +50,27 @@ impl System for SystemService {
             os_version: sysinfo::System::os_version().unwrap_or_default(),
             host_name: sysinfo::System::host_name().unwrap_or_default(),
         }))
+    }
+
+    async fn get_cpus(&self, _: Request<Empty>) -> Result<Response<CpusReply>, Status> {
+        let mut sys = sysinfo::System::new_with_specifics(
+            RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
+        );
+
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        sys.refresh_cpu_all();
+
+        let cpus = sys
+            .cpus()
+            .iter()
+            .map(|c| Cpu {
+                name: c.name().to_string(),
+                cpu_usage: c.cpu_usage(),
+                frequency: c.frequency(),
+            })
+            .collect();
+
+        Ok(Response::new(CpusReply { cpus }))
     }
 }
 

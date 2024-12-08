@@ -7,6 +7,7 @@ service System {
     rpc GetMemory (Empty) returns (MemoryReply);
     rpc GetDisks (Empty) returns (DiskReply);
     rpc GetInfo (Empty) returns (InfoReply);
+    rpc GetCpus (Empty) returns (CpusReply);
 }
 
 
@@ -34,6 +35,16 @@ message InfoReply {
     string kernel_version = 2;
     string os_version = 3;
     string host_name = 4;
+}
+
+message CpusReply {
+    repeated Cpu cpus = 1;
+}
+
+message Cpu {
+    string name = 1;
+    float cpu_usage = 2;
+    uint64 frequency = 3;
 }
 
 service Docker {
