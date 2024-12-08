@@ -1,4 +1,4 @@
-use egui::{Color32, RichText, Ui};
+use egui::{Color32, RichText, ScrollArea, Ui};
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
@@ -75,7 +75,7 @@ impl App {
     }
 
     fn update_state(&mut self) -> Result<()> {
-        if self.last_update.elapsed().as_secs() > 2 {
+        if self.last_update.elapsed().as_secs() > 5 {
             let tx = self.tx.clone();
 
             self.rt.spawn(async move {
@@ -135,6 +135,16 @@ impl App {
                 ui.label(RichText::new("Created").color(Color32::WHITE));
                 ui.label(&container.created);
             });
+
+            ScrollArea::vertical()
+                .id_salt(container.id.clone())
+                .max_height(100.0)
+                .show(ui, |ui| {
+                    for line in &container.logs {
+                        ui.label(RichText::new(line).monospace());
+                    }
+                });
+
             ui.horizontal(|ui| {
                 if ui.button("Start").clicked() {
                     self.start_container(container.id.clone())

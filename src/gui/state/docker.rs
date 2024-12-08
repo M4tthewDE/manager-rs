@@ -10,10 +10,11 @@ pub struct Container {
     pub image: String,
     pub status: String,
     pub created: String,
+    pub logs: Vec<String>,
 }
 
 impl Container {
-    pub fn new(c: &docker_proto::Container) -> Result<Self> {
+    pub fn new(c: &docker_proto::Container, logs: Vec<String>) -> Result<Self> {
         let created = DateTime::from_timestamp(c.created, 0).unwrap();
         Ok(Self {
             id: c.id.clone(),
@@ -21,6 +22,7 @@ impl Container {
             image: c.image.clone(),
             status: c.status.clone(),
             created: format!("{} ({:?})", HumanTime::from(created), created),
+            logs,
         })
     }
 }

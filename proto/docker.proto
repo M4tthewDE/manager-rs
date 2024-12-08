@@ -6,6 +6,7 @@ service Docker {
     rpc RemoveContainer (ContainerIdentifier) returns (Empty);
     rpc StopContainer (ContainerIdentifier) returns (Empty);
     rpc StartContainer (ContainerIdentifier) returns (Empty);
+    rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
 }
 
 message Empty {}
@@ -32,4 +33,8 @@ message Port {
 
 message ContainerIdentifier {
     string id = 1;
+}
+
+message LogsReply {
+    repeated string lines = 1;
 }

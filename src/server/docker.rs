@@ -1,3 +1,6 @@
+use std::io::BufRead;
+use tracing::{debug, error};
+
 use anyhow::bail;
 use anyhow::Result;
 use docker_proto::docker_server;
@@ -56,6 +59,7 @@ async fn list_containers() -> Result<Vec<Container>> {
 
     let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
 
+    //FIXME: error handling
     let res = client.get(url).await?;
     let body = res.collect().await?.aggregate();
 
@@ -130,6 +134,35 @@ async fn remove_container(id: &str) -> Result<()> {
     Ok(())
 }
 
+async fn container_logs(id: &str) -> Result<Vec<String>> {
+    let url = Uri::new(
+        "/var/run/docker.sock",
+        &format!("/v1.47/containers/{}/logs?stdout=true&timestamps=true", id),
+    );
+
+    let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
+    let res = client.get(url.into()).await?;
+
+    if res.status() != 200 {
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("{error:?}")
+    }
+
+    let body = res.collect().await?.aggregate();
+    let reader = body.reader();
+
+    let mut lines = vec![];
+    for l in reader.lines() {
+        match l {
+            Ok(line) => lines.push(line),
+            Err(err) => debug!("Skipping log line: {err:?}"),
+        }
+    }
+
+    Ok(lines)
+}
+
 #[derive(Debug, Default)]
 pub struct DockerService {}
 
@@ -200,6 +233,19 @@ impl docker_server::Docker for DockerService {
             .map_err(|e| Status::from_error(e.into()))?;
 
         Ok(Response::new(docker_proto::Empty {}))
+    }
+
+    async fn logs_container(
+        &self,
+        request: Request<docker_proto::ContainerIdentifier>,
+    ) -> Result<Response<docker_proto::LogsReply>, Status> {
+        match container_logs(&request.get_ref().id).await {
+            Ok(lines) => Ok(Response::new(docker_proto::LogsReply { lines })),
+            Err(err) => {
+                error!("{err:?}");
+                Err(Status::from_error(err.into()))
+            }
+        }
     }
 }
 

@@ -41,16 +41,22 @@ async fn update_containers() -> Result<StateChangeMessage> {
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
 
-    let containers = response
-        .get_ref()
-        .container_list
-        .iter()
-        .map(Container::new)
-        .collect::<Result<Vec<Container>>>()?;
+    let mut containers = Vec::new();
+    for c in &response.get_ref().container_list {
+        let logs = get_logs(c.id.clone()).await?;
+        containers.push(Container::new(c, logs)?);
+    }
 
     Ok(Box::new(move |state: &mut State| {
         state.containers = containers;
     }))
+}
+
+async fn get_logs(id: String) -> Result<Vec<String>> {
+    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(ContainerIdentifier { id });
+    let response = client.logs_container(request).await?;
+    Ok(response.get_ref().lines.clone())
 }
 
 async fn update_memory() -> Result<StateChangeMessage> {
