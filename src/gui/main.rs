@@ -199,7 +199,14 @@ impl App {
     fn cpu(ui: &mut Ui, cpu: &Cpu) {
         ui.horizontal(|ui| {
             ui.label(RichText::new(&cpu.name).color(Color32::WHITE));
-            ui.label(&cpu.usage);
+            let color = if cpu.usage < 50.0 {
+                Color32::GREEN
+            } else if cpu.usage < 75.0 {
+                Color32::YELLOW
+            } else {
+                Color32::RED
+            };
+            ui.label(RichText::new(format!("{:.2}%", cpu.usage)).color(color));
             ui.label(&cpu.frequency);
         });
     }
