@@ -1,3 +1,4 @@
+use egui::{Color32, RichText, Ui};
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
@@ -5,7 +6,7 @@ use std::{
 use tracing::error;
 
 use anyhow::Result;
-use state::{State, StateChangeMessage};
+use state::{docker::Container, memory::Memory, State, StateChangeMessage};
 use tokio::runtime;
 
 mod state;
@@ -42,35 +43,60 @@ impl eframe::App for App {
             self.update_state().unwrap();
             self.change_state();
 
-            ui.heading("Server manager");
-
             ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Total");
-                    ui.label(&self.state.memory.total);
-                });
+                ui.heading(RichText::new("Server manager").color(Color32::WHITE));
+                ui.separator();
 
-                ui.horizontal(|ui| {
-                    ui.label("Free");
-                    ui.label(&self.state.memory.free);
-                });
+                ui.heading(RichText::new("Memory").color(Color32::WHITE));
+                memory(ui, &self.state.memory);
+                ui.separator();
 
-                ui.horizontal(|ui| {
-                    ui.label("Available");
-                    ui.label(&self.state.memory.available);
-                });
-
-                for container in &self.state.containers {
-                    ui.horizontal(|ui| {
-                        ui.label(&container.name);
-                        ui.label(&container.image);
-                        ui.label(&container.status);
-                    });
+                ui.heading(RichText::new("Docker").color(Color32::WHITE));
+                for c in &self.state.containers {
+                    container(ui, c);
                     ui.separator();
                 }
             });
         });
     }
+}
+
+fn memory(ui: &mut Ui, memory: &Memory) {
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Total").color(Color32::WHITE));
+        ui.label(&memory.total);
+    });
+
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Free").color(Color32::WHITE));
+        ui.label(&memory.free);
+    });
+
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("Available").color(Color32::WHITE));
+        ui.label(&memory.available);
+    });
+}
+
+fn container(ui: &mut Ui, container: &Container) {
+    ui.vertical(|ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Name").color(Color32::WHITE));
+            ui.label(&container.name);
+        });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Image").color(Color32::WHITE));
+            ui.label(&container.image);
+        });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Status").color(Color32::WHITE));
+            ui.label(&container.status);
+        });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Created").color(Color32::WHITE));
+            ui.label(&container.created);
+        });
+    });
 }
 
 impl App {

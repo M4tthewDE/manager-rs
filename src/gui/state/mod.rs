@@ -17,7 +17,7 @@ pub mod memory_proto {
     tonic::include_proto!("memory");
 }
 
-pub type StateChangeMessage = Box<dyn Fn(&mut State) + Send + Sync>;
+pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 
 #[derive(Default)]
 pub struct State {
@@ -41,13 +41,15 @@ async fn update_containers() -> Result<StateChangeMessage> {
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
 
+    let containers = response
+        .get_ref()
+        .container_list
+        .iter()
+        .map(|c| Container::new(c))
+        .collect::<Result<Vec<Container>>>()?;
+
     Ok(Box::new(move |state: &mut State| {
-        state.containers = response
-            .get_ref()
-            .container_list
-            .iter()
-            .map(Container::new)
-            .collect()
+        state.containers = containers;
     }))
 }
 
@@ -55,8 +57,9 @@ async fn update_memory() -> Result<StateChangeMessage> {
     let mut client = MemoryClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(memory_proto::Empty {});
     let response = client.get_memory(request).await?;
+    let memory = Memory::new(response.get_ref());
 
     Ok(Box::new(move |state: &mut State| {
-        state.memory = Memory::new(response.get_ref());
+        state.memory = memory;
     }))
 }

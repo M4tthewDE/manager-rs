@@ -1,17 +1,23 @@
+use anyhow::Result;
+use chrono::DateTime;
+use chrono_humanize::HumanTime;
+
 use super::docker_proto;
 
 pub struct Container {
     pub name: String,
     pub image: String,
     pub status: String,
+    pub created: String,
 }
 
 impl Container {
-    pub fn new(c: &docker_proto::Container) -> Self {
-        Self {
-            name: c.names.first().unwrap_or(&"".to_string()).to_string(),
+    pub fn new(c: &docker_proto::Container) -> Result<Self> {
+        Ok(Self {
+            name: c.names.join(", "),
             image: c.image.clone(),
             status: c.status.clone(),
-        }
+            created: HumanTime::from(DateTime::from_timestamp(c.created, 0).unwrap()).to_string(),
+        })
     }
 }
