@@ -4,14 +4,27 @@ use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use tokio::runtime::Runtime;
 use tracing::error;
 
-use crate::state::{self, docker::Container, StateChangeMessage};
+use crate::state::{
+    self,
+    docker::{Container, Port},
+    StateChangeMessage,
+};
 
-pub fn container(
+pub fn docker(
     ui: &mut Ui,
-    container: &Container,
+    containers: &[Container],
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
 ) {
+    ui.heading(RichText::new("Docker").color(Color32::WHITE));
+    ScrollArea::vertical().id_source("docker").show(ui, |ui| {
+        for c in containers {
+            container(ui, c, tx, rt);
+        }
+    });
+}
+
+fn container(ui: &mut Ui, container: &Container, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
     puffin::profile_function!();
     ui.group(|ui| {
         ui.vertical(|ui| {
@@ -36,49 +49,60 @@ pub fn container(
                 ui.label(&container.created);
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Ports").color(Color32::WHITE));
-                ui.vertical(|ui| {
-                    for p in &container.ports {
-                        ui.label(format!(
-                            "{}->{}/{}",
-                            p.public_port, p.private_port, p.port_type
-                        ));
-                    }
-                });
+                ports(ui, &container.ports);
             });
         });
 
-        CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
-            .id_source(format!("{}-header", &container.id))
-            .show(ui, |ui| {
-                ScrollArea::vertical()
-                    .id_source(container.id.clone())
-                    .max_height(400.0)
-                    .auto_shrink([false, false])
-                    .stick_to_bottom(true)
-                    .show_rows(
-                        ui,
-                        ui.text_style_height(&TextStyle::Monospace),
-                        container.logs.len(),
-                        |ui, row_range| {
-                            for line in &container.logs[row_range.start..row_range.end] {
-                                ui.label(RichText::new(line).monospace());
-                            }
-                        },
-                    );
-            });
+        logs(ui, container);
+        docker_actions(ui, &container.id, tx, rt);
+    });
+}
 
-        ui.horizontal(|ui| {
-            if ui.button("Start").clicked() {
-                start_container(container.id.clone(), tx, rt)
-            }
-            if ui.button("Stop").clicked() {
-                stop_container(container.id.clone(), tx, rt)
-            }
-            if ui.button("Remove").clicked() {
-                remove_container(container.id.clone(), tx, rt)
-            }
+fn ports(ui: &mut Ui, ports: &[Port]) {
+    ui.label(RichText::new("Ports").color(Color32::WHITE));
+    ui.vertical(|ui| {
+        for p in ports {
+            ui.label(format!(
+                "{}->{}/{}",
+                p.public_port, p.private_port, p.port_type
+            ));
+        }
+    });
+}
+
+fn logs(ui: &mut Ui, container: &Container) {
+    CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
+        .id_source(format!("{}-header", &container.id))
+        .show(ui, |ui| {
+            ScrollArea::vertical()
+                .id_source(container.id.clone())
+                .max_height(400.0)
+                .auto_shrink([false, false])
+                .stick_to_bottom(true)
+                .show_rows(
+                    ui,
+                    ui.text_style_height(&TextStyle::Monospace),
+                    container.logs.len(),
+                    |ui, row_range| {
+                        for line in &container.logs[row_range.start..row_range.end] {
+                            ui.label(RichText::new(line).monospace());
+                        }
+                    },
+                );
         });
+}
+
+fn docker_actions(ui: &mut Ui, id: &str, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    ui.horizontal(|ui| {
+        if ui.button("Start").clicked() {
+            start_container(id.to_owned(), tx, rt)
+        }
+        if ui.button("Stop").clicked() {
+            stop_container(id.to_owned(), tx, rt)
+        }
+        if ui.button("Remove").clicked() {
+            remove_container(id.to_owned(), tx, rt)
+        }
     });
 }
 

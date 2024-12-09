@@ -1,4 +1,4 @@
-use egui::{Color32, RichText, ScrollArea};
+use egui::{Color32, RichText};
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -76,12 +76,7 @@ impl eframe::App for App {
                 ui::info::disks(ui, &self.state.info.disks);
                 ui.add_space(10.0);
 
-                ui.heading(RichText::new("Docker").color(Color32::WHITE));
-                ScrollArea::vertical().id_source("docker").show(ui, |ui| {
-                    for c in &self.state.containers {
-                        ui::docker::container(ui, c, &self.tx, &self.rt);
-                    }
-                });
+                ui::docker::docker(ui, &self.state.containers, &self.tx, &self.rt);
             });
 
             if self.profiler {
