@@ -1,4 +1,3 @@
-use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
@@ -17,6 +16,7 @@ mod ui;
 #[derive(Deserialize, Clone)]
 struct Config {
     update_interval: u64,
+    profiling: bool,
 }
 
 fn main() -> eframe::Result {
@@ -27,6 +27,10 @@ fn main() -> eframe::Result {
             .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?,
     )
     .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?;
+
+    if config.profiling {
+        puffin::set_scopes_on(true);
+    }
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
@@ -42,7 +46,6 @@ fn main() -> eframe::Result {
 struct App {
     config: Config,
     rt: runtime::Runtime,
-    profiler: bool,
 
     state: State,
     last_update: Instant,
@@ -62,19 +65,14 @@ impl eframe::App for App {
 
         ui::ui(ctx, &self.state, &self.tx, &self.rt);
 
-        if self.profiler {
-            self.profiler = puffin_egui::profiler_window(ctx);
+        if self.config.profiling {
+            puffin_egui::profiler_window(ctx);
         }
     }
 }
 
 impl App {
     fn new(config: Config) -> Result<Self> {
-        let profiler = env::var("PROFILING").is_ok();
-        if profiler {
-            puffin::set_scopes_on(true);
-        }
-
         let (tx, rx) = mpsc::channel();
 
         Ok(Self {
@@ -82,7 +80,6 @@ impl App {
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
             last_update: Instant::now() - Duration::from_millis(config.update_interval + 1000),
             state: State::default(),
-            profiler,
             tx,
             rx,
         })
