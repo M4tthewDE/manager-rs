@@ -7,31 +7,35 @@ pub fn disks(ui: &mut Ui, disks: &[Disk]) {
         ui.heading(RichText::new("Disks").color(Color32::WHITE));
         ui.horizontal(|ui| {
             for d in disks {
-                ui.group(|ui| {
-                    ui.vertical(|ui| {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Name").color(Color32::WHITE));
-                            ui.label(&d.name);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Kind").color(Color32::WHITE));
-                            ui.label(&d.kind);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("File System").color(Color32::WHITE));
-                            ui.label(&d.file_system);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Total").color(Color32::WHITE));
-                            ui.label(&d.total_space);
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("Available").color(Color32::WHITE));
-                            ui.label(&d.available_space);
-                        });
-                    });
-                });
+                disk(ui, d);
             }
+        });
+    });
+}
+
+fn disk(ui: &mut Ui, disk: &Disk) {
+    ui.group(|ui| {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Name").color(Color32::WHITE));
+                ui.label(&disk.name);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Kind").color(Color32::WHITE));
+                ui.label(&disk.kind);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("File System").color(Color32::WHITE));
+                ui.label(&disk.file_system);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Total").color(Color32::WHITE));
+                ui.label(&disk.total_space);
+            });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Available").color(Color32::WHITE));
+                ui.label(&disk.available_space);
+            });
         });
     });
 }
