@@ -1,4 +1,3 @@
-use egui::{Color32, RichText};
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -58,31 +57,14 @@ impl eframe::App for App {
         puffin::profile_function!();
         puffin::GlobalProfiler::lock().new_frame();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.update_state().unwrap();
-            self.change_state();
+        self.update_state().unwrap();
+        self.change_state();
 
-            ui.vertical(|ui| {
-                ui.heading(RichText::new("Server manager").color(Color32::WHITE));
-                ui.add_space(10.0);
+        ui::ui(ctx, &self.state, &self.tx, &self.rt);
 
-                ui.horizontal(|ui| {
-                    ui::info::info(ui, &self.state.info);
-                    ui::info::memory(ui, &self.state.info.memory);
-                    ui::info::cpus(ui, &self.state.info.cpus);
-                });
-                ui.add_space(10.0);
-
-                ui::info::disks(ui, &self.state.info.disks);
-                ui.add_space(10.0);
-
-                ui::docker::docker(ui, &self.state.containers, &self.tx, &self.rt);
-            });
-
-            if self.profiler {
-                self.profiler = puffin_egui::profiler_window(ctx);
-            }
-        });
+        if self.profiler {
+            self.profiler = puffin_egui::profiler_window(ctx);
+        }
     }
 }
 
