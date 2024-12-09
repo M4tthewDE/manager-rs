@@ -53,11 +53,12 @@ struct App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_millis(500));
         puffin::profile_function!();
         puffin::GlobalProfiler::lock().new_frame();
 
-        self.update_state().unwrap();
+        ctx.request_repaint_after(Duration::from_millis(500));
+
+        self.update_state();
         self.change_state();
 
         ui::ui(ctx, &self.state, &self.tx, &self.rt);
@@ -82,8 +83,9 @@ impl App {
         })
     }
 
-    fn update_state(&mut self) -> Result<()> {
+    fn update_state(&mut self) {
         puffin::profile_function!();
+
         if self.last_update.elapsed().as_millis() > self.config.update_interval.into() {
             let tx = self.tx.clone();
 
@@ -95,12 +97,11 @@ impl App {
 
             self.last_update = Instant::now();
         }
-
-        Ok(())
     }
 
     fn change_state(&mut self) {
         puffin::profile_function!();
+
         if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
