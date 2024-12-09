@@ -5,8 +5,8 @@ use tokio::runtime::Runtime;
 
 use crate::state::{State, StateChangeMessage};
 
-pub mod docker;
-pub mod info;
+mod docker;
+mod info;
 
 pub fn ui(ctx: &Context, state: &State, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
     CentralPanel::default().show(ctx, |ui| {
