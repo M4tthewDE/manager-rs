@@ -66,3 +66,9 @@ impl Default for Version {
         }
     }
 }
+
+#[derive(Default)]
+pub struct DockerState {
+    pub containers: Vec<Container>,
+    pub version: Version,
+}

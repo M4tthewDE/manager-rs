@@ -25,7 +25,7 @@ pub fn ui(ctx: &Context, state: &State, tx: &Sender<StateChangeMessage>, rt: &Ru
             info::disks(ui, &state.info.disks);
             ui.add_space(10.0);
 
-            docker::docker(ui, &state.version, &state.containers, tx, rt);
+            docker::docker(ui, &state.docker_state, tx, rt);
         });
     });
 }

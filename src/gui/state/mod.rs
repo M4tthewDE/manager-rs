@@ -1,5 +1,5 @@
 use anyhow::Result;
-use docker::{Container, Version};
+use docker::{Container, DockerState, Version};
 use futures::future::{self, BoxFuture};
 use info::Info;
 use proto::system_client::SystemClient;
@@ -19,8 +19,7 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 
 #[derive(Default)]
 pub struct State {
-    pub containers: Vec<Container>,
-    pub version: Version,
+    pub docker_state: DockerState,
     pub info: Info,
 }
 
@@ -56,7 +55,7 @@ async fn update_containers() -> Result<StateChangeMessage> {
     }
 
     Ok(Box::new(move |state: &mut State| {
-        state.containers = containers;
+        state.docker_state.containers = containers;
     }))
 }
 
@@ -66,7 +65,7 @@ async fn update_version() -> Result<StateChangeMessage> {
     let version = Version::from(client.version(request).await?.get_ref());
 
     Ok(Box::new(move |state: &mut State| {
-        state.version = version;
+        state.docker_state.version = version;
     }))
 }
 
