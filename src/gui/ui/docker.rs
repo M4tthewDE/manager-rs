@@ -16,6 +16,8 @@ pub fn docker(
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
 ) {
+    puffin::profile_function!();
+
     ui.heading(RichText::new("Docker").color(Color32::WHITE));
     ScrollArea::vertical().id_source("docker").show(ui, |ui| {
         for c in containers {
@@ -26,6 +28,7 @@ pub fn docker(
 
 fn container(ui: &mut Ui, container: &Container, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
     puffin::profile_function!();
+
     ui.group(|ui| {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
@@ -59,6 +62,8 @@ fn container(ui: &mut Ui, container: &Container, tx: &Sender<StateChangeMessage>
 }
 
 fn ports(ui: &mut Ui, ports: &[Port]) {
+    puffin::profile_function!();
+
     ui.label(RichText::new("Ports").color(Color32::WHITE));
     ui.vertical(|ui| {
         for p in ports {
@@ -71,6 +76,8 @@ fn ports(ui: &mut Ui, ports: &[Port]) {
 }
 
 fn logs(ui: &mut Ui, container: &Container) {
+    puffin::profile_function!();
+
     CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
         .id_source(format!("{}-header", &container.id))
         .show(ui, |ui| {
@@ -93,6 +100,8 @@ fn logs(ui: &mut Ui, container: &Container) {
 }
 
 fn docker_actions(ui: &mut Ui, id: &str, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    puffin::profile_function!();
+
     ui.horizontal(|ui| {
         if ui.button("Start").clicked() {
             start_container(id.to_owned(), tx, rt)
@@ -107,6 +116,8 @@ fn docker_actions(ui: &mut Ui, id: &str, tx: &Sender<StateChangeMessage>, rt: &R
 }
 
 fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    puffin::profile_function!();
+
     let tx = tx.clone();
 
     rt.spawn(async move {
@@ -121,6 +132,8 @@ fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
 }
 
 fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    puffin::profile_function!();
+
     let tx = tx.clone();
 
     rt.spawn(async move {
@@ -135,6 +148,8 @@ fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
 }
 
 fn remove_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    puffin::profile_function!();
+
     let tx = tx.clone();
 
     rt.spawn(async move {

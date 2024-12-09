@@ -9,6 +9,7 @@ mod docker;
 mod info;
 
 pub fn ui(ctx: &Context, state: &State, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+    puffin::profile_function!();
     CentralPanel::default().show(ctx, |ui| {
         ui.vertical(|ui| {
             ui.heading(RichText::new("Server manager").color(Color32::WHITE));

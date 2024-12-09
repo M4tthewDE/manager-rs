@@ -3,6 +3,8 @@ use egui::{Color32, RichText, Ui};
 use crate::state::info::{cpu::Cpu, disk::Disk, memory::Memory, Info};
 
 pub fn disks(ui: &mut Ui, disks: &[Disk]) {
+    puffin::profile_function!();
+
     ui.vertical(|ui| {
         ui.heading(RichText::new("Disks").color(Color32::WHITE));
         ui.horizontal(|ui| {
@@ -14,6 +16,8 @@ pub fn disks(ui: &mut Ui, disks: &[Disk]) {
 }
 
 fn disk(ui: &mut Ui, disk: &Disk) {
+    puffin::profile_function!();
+
     ui.group(|ui| {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
@@ -99,6 +103,8 @@ pub fn memory(ui: &mut Ui, memory: &Memory) {
 }
 
 pub fn cpus(ui: &mut Ui, cpus: &[Cpu]) {
+    puffin::profile_function!();
+
     ui.vertical(|ui| {
         ui.heading(RichText::new("CPU").color(Color32::WHITE));
         ui.group(|ui| {
@@ -115,6 +121,8 @@ pub fn cpus(ui: &mut Ui, cpus: &[Cpu]) {
 }
 
 fn cpu(ui: &mut Ui, cpu: &Cpu) {
+    puffin::profile_function!();
+
     ui.horizontal(|ui| {
         ui.label(RichText::new(&cpu.name).color(Color32::WHITE));
         let color = if cpu.usage < 50.0 {
