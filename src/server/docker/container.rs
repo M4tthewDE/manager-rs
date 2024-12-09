@@ -15,7 +15,7 @@ use serde::Deserialize;
 use crate::docker::Error;
 use crate::proto;
 
-const DOCKER_SOCK: &str = "/var/run/docker.sock";
+use super::DOCKER_SOCK;
 
 #[derive(Deserialize, Debug)]
 struct Port {

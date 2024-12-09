@@ -49,11 +49,17 @@ message Cpu {
 }
 
 service Docker {
+    rpc Version (Empty) returns (VersionReply);
     rpc ListContainers (Empty) returns (ContainerListReply);
     rpc RemoveContainer (ContainerIdentifier) returns (Empty);
     rpc StopContainer (ContainerIdentifier) returns (Empty);
     rpc StartContainer (ContainerIdentifier) returns (Empty);
     rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
+}
+
+message VersionReply {
+    string version = 1;
+    string apiVersion = 2;
 }
 
 message ContainerListReply {

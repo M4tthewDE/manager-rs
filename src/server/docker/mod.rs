@@ -5,6 +5,9 @@ use tonic::{Request, Response, Status};
 use crate::proto;
 
 mod container;
+mod version;
+
+const DOCKER_SOCK: &str = "/var/run/docker.sock";
 
 #[derive(Deserialize, Debug)]
 struct Error {
@@ -73,6 +76,17 @@ impl proto::docker_server::Docker for DockerService {
             .map_err(|e| Status::from_error(e.into()))?;
 
         Ok(Response::new(proto::LogsReply { lines }))
+    }
+
+    async fn version(
+        &self,
+        _: Request<proto::Empty>,
+    ) -> Result<Response<proto::VersionReply>, Status> {
+        let version = version::version()
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(proto::VersionReply::from(&version)))
     }
 }
 

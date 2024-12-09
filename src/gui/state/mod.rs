@@ -1,5 +1,5 @@
 use anyhow::Result;
-use docker::Container;
+use docker::{Container, Version};
 use futures::future::{self, BoxFuture};
 use info::Info;
 use proto::system_client::SystemClient;
@@ -20,13 +20,17 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 #[derive(Default)]
 pub struct State {
     pub containers: Vec<Container>,
+    pub version: Version,
     pub info: Info,
 }
 
 pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
     let start = Instant::now();
-    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> =
-        vec![Box::pin(update_containers()), Box::pin(update_info())];
+    let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
+        Box::pin(update_containers()),
+        Box::pin(update_info()),
+        Box::pin(update_version()),
+    ];
 
     for result in future::join_all(futures).await {
         tx.send(result?)?;
@@ -53,6 +57,16 @@ async fn update_containers() -> Result<StateChangeMessage> {
 
     Ok(Box::new(move |state: &mut State| {
         state.containers = containers;
+    }))
+}
+
+async fn update_version() -> Result<StateChangeMessage> {
+    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+    let request = tonic::Request::new(Empty {});
+    let version = Version::from(client.version(request).await?.get_ref());
+
+    Ok(Box::new(move |state: &mut State| {
+        state.version = version;
     }))
 }
 

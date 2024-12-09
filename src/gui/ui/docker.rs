@@ -6,12 +6,13 @@ use tracing::error;
 
 use crate::state::{
     self,
-    docker::{Container, Port},
+    docker::{Container, Port, Version},
     StateChangeMessage,
 };
 
 pub fn docker(
     ui: &mut Ui,
+    v: &Version,
     containers: &[Container],
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
@@ -19,10 +20,24 @@ pub fn docker(
     puffin::profile_function!();
 
     ui.heading(RichText::new("Docker").color(Color32::WHITE));
+    version(ui, v);
     ScrollArea::vertical().id_source("docker").show(ui, |ui| {
         for c in containers {
             container(ui, c, tx, rt);
         }
+    });
+}
+
+fn version(ui: &mut Ui, version: &Version) {
+    ui.horizontal(|ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Version").color(Color32::WHITE));
+            ui.label(&version.version);
+        });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Api version").color(Color32::WHITE));
+            ui.label(&version.api_version);
+        });
     });
 }
 
