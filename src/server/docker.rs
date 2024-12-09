@@ -1,5 +1,5 @@
 use std::io::BufRead;
-use tracing::{debug, error};
+use tracing::debug;
 
 use anyhow::bail;
 use anyhow::Result;
@@ -51,9 +51,16 @@ struct Port {
     port_type: String,
 }
 
-async fn list_containers() -> Result<Vec<Container>> {
-    let url = Uri::new("/var/run/docker.sock", "/v1.47/containers/json?all=true").into();
+const DOCKER_SOCK: &str = "/var/run/docker.sock";
 
+#[derive(Deserialize, Debug)]
+struct Error {
+    #[allow(dead_code)]
+    message: String,
+}
+
+async fn list_containers() -> Result<Vec<Container>> {
+    let url = Uri::new(DOCKER_SOCK, "/v1.47/containers/json?all=true").into();
     let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
 
     let res = client.get(url).await?;
@@ -70,17 +77,8 @@ async fn list_containers() -> Result<Vec<Container>> {
     Ok(containers)
 }
 
-#[derive(Deserialize, Debug)]
-struct Error {
-    #[allow(dead_code)]
-    message: String,
-}
-
 async fn start_container(id: &str) -> Result<()> {
-    let url = Uri::new(
-        "/var/run/docker.sock",
-        &format!("/v1.47/containers/{}/start", id),
-    );
+    let url = Uri::new(DOCKER_SOCK, &format!("/v1.47/containers/{}/start", id));
     let req = hyper::Request::builder()
         .uri(url)
         .method("POST")
@@ -98,10 +96,7 @@ async fn start_container(id: &str) -> Result<()> {
 }
 
 async fn stop_container(id: &str) -> Result<()> {
-    let url = Uri::new(
-        "/var/run/docker.sock",
-        &format!("/v1.47/containers/{}/stop", id),
-    );
+    let url = Uri::new(DOCKER_SOCK, &format!("/v1.47/containers/{}/stop", id));
     let req = hyper::Request::builder()
         .uri(url)
         .method("POST")
@@ -119,7 +114,7 @@ async fn stop_container(id: &str) -> Result<()> {
 }
 
 async fn remove_container(id: &str) -> Result<()> {
-    let url = Uri::new("/var/run/docker.sock", &format!("/v1.47/containers/{}", id));
+    let url = Uri::new(DOCKER_SOCK, &format!("/v1.47/containers/{}", id));
     let req = hyper::Request::builder()
         .uri(url)
         .method("DELETE")
@@ -138,7 +133,7 @@ async fn remove_container(id: &str) -> Result<()> {
 
 async fn container_logs(id: &str) -> Result<Vec<String>> {
     let url = Uri::new(
-        "/var/run/docker.sock",
+        DOCKER_SOCK,
         &format!("/v1.47/containers/{}/logs?stdout=true&timestamps=true", id),
     );
 
@@ -165,6 +160,28 @@ async fn container_logs(id: &str) -> Result<Vec<String>> {
     Ok(lines)
 }
 
+impl From<&Container> for proto::Container {
+    fn from(c: &Container) -> Self {
+        Self {
+            id: c.id.clone(),
+            names: c.names.clone(),
+            image: c.image.clone(),
+            command: c.command.clone(),
+            created: c.created,
+            ports: c
+                .ports
+                .iter()
+                .map(|p| proto::Port {
+                    private_port: p.private_port,
+                    public_port: p.public_port,
+                    port_type: p.port_type.clone(),
+                })
+                .collect(),
+            status: c.status.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct DockerService {}
 
@@ -178,26 +195,8 @@ impl proto::docker_server::Docker for DockerService {
             .await
             .map_err(|e| Status::from_error(e.into()))?;
 
-        let container_list: Vec<proto::Container> = containers
-            .iter()
-            .map(|c| proto::Container {
-                id: c.id.clone(),
-                names: c.names.clone(),
-                image: c.image.clone(),
-                command: c.command.clone(),
-                created: c.created,
-                ports: c
-                    .ports
-                    .iter()
-                    .map(|p| proto::Port {
-                        private_port: p.private_port,
-                        public_port: p.public_port,
-                        port_type: p.port_type.clone(),
-                    })
-                    .collect(),
-                status: c.status.clone(),
-            })
-            .collect();
+        let container_list: Vec<proto::Container> =
+            containers.iter().map(proto::Container::from).collect();
 
         Ok(Response::new(proto::ContainerListReply { container_list }))
     }
@@ -239,13 +238,11 @@ impl proto::docker_server::Docker for DockerService {
         &self,
         request: Request<proto::ContainerIdentifier>,
     ) -> Result<Response<proto::LogsReply>, Status> {
-        match container_logs(&request.get_ref().id).await {
-            Ok(lines) => Ok(Response::new(proto::LogsReply { lines })),
-            Err(err) => {
-                error!("{err:?}");
-                Err(Status::from_error(err.into()))
-            }
-        }
+        let lines = container_logs(&request.get_ref().id)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(proto::LogsReply { lines }))
     }
 }
 
