@@ -1,3 +1,5 @@
+use crate::state::proto;
+
 #[derive(Default)]
 pub struct Cpu {
     pub name: String,
@@ -5,8 +7,8 @@ pub struct Cpu {
     pub frequency: String,
 }
 
-impl Cpu {
-    pub fn new(c: &crate::state::proto::Cpu) -> Self {
+impl From<&proto::Cpu> for Cpu {
+    fn from(c: &proto::Cpu) -> Self {
         Self {
             name: c.name.clone(),
             usage: c.cpu_usage,

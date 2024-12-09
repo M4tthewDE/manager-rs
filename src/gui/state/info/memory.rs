@@ -9,8 +9,8 @@ pub struct Memory {
     pub used: String,
 }
 
-impl Memory {
-    pub fn new(m: &MemoryInfo) -> Self {
+impl From<&MemoryInfo> for Memory {
+    fn from(m: &MemoryInfo) -> Self {
         Self {
             total: humansize::format_size(m.total, DECIMAL),
             free: humansize::format_size(m.free, DECIMAL),

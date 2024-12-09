@@ -20,21 +20,21 @@ pub struct Info {
     pub cpus: Vec<Cpu>,
 }
 
-impl Info {
-    pub fn new(i: &InfoReply) -> Self {
+impl From<&InfoReply> for Info {
+    fn from(i: &InfoReply) -> Self {
         let disks = i
             .disk_info
             .clone()
-            .map(|disk_info| disk_info.disks.iter().map(Disk::new).collect())
+            .map(|disk_info| disk_info.disks.iter().map(Disk::from).collect())
             .unwrap_or_default();
-        let memory = Memory::new(&i.memory_info.unwrap_or_default());
+        let memory = Memory::from(&i.memory_info.unwrap_or_default());
         let cpus = i
             .cpu_info
             .clone()
-            .map(|cpu_info| cpu_info.cpus.iter().map(Cpu::new).collect())
+            .map(|cpu_info| cpu_info.cpus.iter().map(Cpu::from).collect())
             .unwrap_or_default();
 
-        Info {
+        Self {
             name: i.name.clone(),
             kernel_version: i.kernel_version.clone(),
             os_version: i.os_version.clone(),

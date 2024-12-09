@@ -1,5 +1,7 @@
 use humansize::DECIMAL;
 
+use crate::state::proto;
+
 pub struct Disk {
     pub name: String,
     pub kind: String,
@@ -8,8 +10,8 @@ pub struct Disk {
     pub available_space: String,
 }
 
-impl Disk {
-    pub fn new(d: &crate::state::proto::Disk) -> Self {
+impl From<&proto::Disk> for Disk {
+    fn from(d: &proto::Disk) -> Self {
         Self {
             name: d.name.clone(),
             kind: d.kind.clone(),

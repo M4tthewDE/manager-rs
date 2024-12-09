@@ -67,7 +67,7 @@ async fn update_info() -> Result<StateChangeMessage> {
     let mut client = SystemClient::connect("http://[::1]:50051").await?;
     let request = tonic::Request::new(proto::Empty {});
     let response = client.get_info(request).await?;
-    let info = Info::new(response.get_ref());
+    let info = Info::from(response.get_ref());
 
     Ok(Box::new(move |state: &mut State| {
         state.info = info;
