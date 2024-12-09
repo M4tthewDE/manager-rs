@@ -1,7 +1,4 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
-use state::info::cpu::Cpu;
-use state::info::disk::Disk;
-use state::info::Info;
 use std::env;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
@@ -11,11 +8,12 @@ use tracing::error;
 
 use anyhow::Result;
 use serde::Deserialize;
-use state::{docker::Container, info::memory::Memory, State, StateChangeMessage};
+use state::{docker::Container, State, StateChangeMessage};
 use std::path::PathBuf;
 use tokio::runtime;
 
 mod state;
+mod ui;
 
 #[derive(Deserialize, Clone)]
 struct Config {
@@ -69,13 +67,13 @@ impl eframe::App for App {
                 ui.add_space(10.0);
 
                 ui.horizontal(|ui| {
-                    self.info(ui, &self.state.info);
-                    self.memory(ui, &self.state.info.memory);
-                    self.cpus(ui, &self.state.info.cpus);
+                    ui::info::info(ui, &self.state.info);
+                    ui::info::memory(ui, &self.state.info.memory);
+                    ui::info::cpus(ui, &self.state.info.cpus);
                 });
                 ui.add_space(10.0);
 
-                self.disks(ui, &self.state.info.disks);
+                ui::info::disks(ui, &self.state.info.disks);
                 ui.add_space(10.0);
 
                 ui.heading(RichText::new("Docker").color(Color32::WHITE));
@@ -135,129 +133,6 @@ impl App {
         if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
-    }
-
-    fn memory(&self, ui: &mut Ui, memory: &Memory) {
-        puffin::profile_function!();
-
-        ui.vertical(|ui| {
-            ui.heading(RichText::new("Memory").color(Color32::WHITE));
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Total").color(Color32::WHITE));
-                    ui.label(&memory.total);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Free").color(Color32::WHITE));
-                    ui.label(&memory.free);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Available").color(Color32::WHITE));
-                    ui.label(&memory.available);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Used").color(Color32::WHITE));
-                    ui.label(&memory.used);
-                });
-            });
-        });
-    }
-
-    fn info(&self, ui: &mut Ui, info: &Info) {
-        puffin::profile_function!();
-
-        ui.vertical(|ui| {
-            ui.heading(RichText::new("Info").color(Color32::WHITE));
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Name").color(Color32::WHITE));
-                    ui.label(&info.name);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Kernel version").color(Color32::WHITE));
-                    ui.label(&info.kernel_version);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("OS version").color(Color32::WHITE));
-                    ui.label(&info.os_version);
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Host name").color(Color32::WHITE));
-                    ui.label(&info.host_name);
-                });
-            });
-        });
-    }
-
-    fn cpus(&self, ui: &mut Ui, cpus: &[Cpu]) {
-        ui.vertical(|ui| {
-            ui.heading(RichText::new("CPU").color(Color32::WHITE));
-            ui.group(|ui| {
-                egui::Grid::new("cpus").show(ui, |ui| {
-                    for (i, c) in cpus.iter().enumerate() {
-                        if i % 4 == 0 && i != 0 {
-                            ui.end_row();
-                        }
-                        App::cpu(ui, c);
-                    }
-                });
-            });
-        });
-    }
-
-    fn cpu(ui: &mut Ui, cpu: &Cpu) {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(&cpu.name).color(Color32::WHITE));
-            let color = if cpu.usage < 50.0 {
-                Color32::GREEN
-            } else if cpu.usage < 75.0 {
-                Color32::YELLOW
-            } else {
-                Color32::RED
-            };
-            ui.label(RichText::new(format!("{:.2}%", cpu.usage)).color(color));
-            ui.label(&cpu.frequency);
-        });
-    }
-
-    fn disks(&self, ui: &mut Ui, disks: &[Disk]) {
-        ui.vertical(|ui| {
-            ui.heading(RichText::new("Disks").color(Color32::WHITE));
-            ui.horizontal(|ui| {
-                for d in disks {
-                    ui.group(|ui| {
-                        ui.vertical(|ui| {
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new("Name").color(Color32::WHITE));
-                                ui.label(&d.name);
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new("Kind").color(Color32::WHITE));
-                                ui.label(&d.kind);
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new("File System").color(Color32::WHITE));
-                                ui.label(&d.file_system);
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new("Total").color(Color32::WHITE));
-                                ui.label(&d.total_space);
-                            });
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new("Available").color(Color32::WHITE));
-                                ui.label(&d.available_space);
-                            });
-                        });
-                    });
-                }
-            });
-        });
     }
 
     fn container(&self, ui: &mut Ui, container: &Container) {
