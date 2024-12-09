@@ -1,3 +1,4 @@
+use crate::config::Config;
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
@@ -5,28 +6,18 @@ use std::{
 use tracing::error;
 
 use anyhow::Result;
-use serde::Deserialize;
 use state::{State, StateChangeMessage};
 use std::path::PathBuf;
 use tokio::runtime;
 
+mod config;
 mod state;
 mod ui;
 
-#[derive(Deserialize, Clone)]
-struct Config {
-    update_interval: u64,
-    profiling: bool,
-}
-
-fn main() -> eframe::Result {
+fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let config: Config = toml::from_str(
-        &std::fs::read_to_string(PathBuf::from("config.toml"))
-            .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?,
-    )
-    .map_err(|e| eframe::Error::AppCreation(Box::new(e)))?;
+    let config = Config::new(PathBuf::from("config.toml"))?;
 
     if config.profiling {
         puffin::set_scopes_on(true);
@@ -36,11 +27,17 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
     };
-    eframe::run_native(
+
+    match eframe::run_native(
         "Server manager",
         options,
         Box::new(|_cc| Ok(Box::new(App::new(config)?))),
-    )
+    ) {
+        Ok(_) => {}
+        Err(err) => error!("{err:?}"),
+    };
+
+    Ok(())
 }
 
 struct App {
