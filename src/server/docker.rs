@@ -56,8 +56,13 @@ async fn list_containers() -> Result<Vec<Container>> {
 
     let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
 
-    //FIXME: error handling
     let res = client.get(url).await?;
+    if res.status() != 200 {
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("{error:?}")
+    }
+
     let body = res.collect().await?.aggregate();
 
     let containers = serde_json::from_reader(body.reader())?;
