@@ -7,6 +7,28 @@ use tonic::{Request, Response, Status};
 
 use anyhow::Result;
 
+impl From<&sysinfo::Cpu> for Cpu {
+    fn from(c: &sysinfo::Cpu) -> Self {
+        Self {
+            name: c.name().to_string(),
+            cpu_usage: c.cpu_usage(),
+            frequency: c.frequency(),
+        }
+    }
+}
+
+impl From<&sysinfo::Disk> for Disk {
+    fn from(d: &sysinfo::Disk) -> Self {
+        Self {
+            name: d.name().to_str().unwrap_or_default().to_string(),
+            kind: d.kind().to_string(),
+            file_system: d.file_system().to_str().unwrap_or_default().to_string(),
+            total_space: d.total_space(),
+            available_space: d.available_space(),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct SystemService {}
 
@@ -20,26 +42,11 @@ impl System for SystemService {
         std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
         sys.refresh_all();
 
-        let cpus = sys
-            .cpus()
-            .iter()
-            .map(|c| Cpu {
-                name: c.name().to_string(),
-                cpu_usage: c.cpu_usage(),
-                frequency: c.frequency(),
-            })
-            .collect();
-
+        let cpus = sys.cpus().iter().map(Cpu::from).collect();
         let disks = Disks::new_with_refreshed_list()
             .list()
             .iter()
-            .map(|d| Disk {
-                name: d.name().to_str().unwrap_or_default().to_string(),
-                kind: d.kind().to_string(),
-                file_system: d.file_system().to_str().unwrap_or_default().to_string(),
-                total_space: d.total_space(),
-                available_space: d.available_space(),
-            })
+            .map(Disk::from)
             .collect();
 
         Ok(Response::new(InfoReply {
