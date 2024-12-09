@@ -284,6 +284,17 @@ impl App {
                     ui.label(RichText::new("Created").color(Color32::WHITE));
                     ui.label(&container.created);
                 });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Ports").color(Color32::WHITE));
+                    ui.vertical(|ui| {
+                        for p in &container.ports {
+                            ui.label(format!(
+                                "{}->{}/{}",
+                                p.public_port, p.private_port, p.port_type
+                            ));
+                        }
+                    });
+                });
             });
 
             CollapsingHeader::new(RichText::new("Logs").color(Color32::WHITE))
