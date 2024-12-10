@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cross build --target=aarch64-unknown-linux-gnu --bin server
+cargo build --target=aarch64-unknown-linux-gnu --bin server
 
 rsync target/aarch64-unknown-linux-gnu/debug/server pi@YOUR_IP:~/server
 
