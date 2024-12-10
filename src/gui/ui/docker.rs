@@ -15,6 +15,7 @@ pub fn docker(
     docker_state: &DockerState,
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
+    server_address: String,
 ) {
     puffin::profile_function!();
 
@@ -22,7 +23,7 @@ pub fn docker(
     version(ui, &docker_state.version);
     ScrollArea::vertical().id_source("docker").show(ui, |ui| {
         for c in &docker_state.containers {
-            container(ui, c, tx, rt);
+            container(ui, c, tx, rt, server_address.clone());
         }
     });
 }
@@ -40,7 +41,13 @@ fn version(ui: &mut Ui, version: &Version) {
     });
 }
 
-fn container(ui: &mut Ui, container: &Container, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+fn container(
+    ui: &mut Ui,
+    container: &Container,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
     puffin::profile_function!();
 
     ui.group(|ui| {
@@ -71,7 +78,7 @@ fn container(ui: &mut Ui, container: &Container, tx: &Sender<StateChangeMessage>
         });
 
         logs(ui, container);
-        docker_actions(ui, &container.id, tx, rt);
+        docker_actions(ui, &container.id, tx, rt, server_address);
     });
 }
 
@@ -113,65 +120,86 @@ fn logs(ui: &mut Ui, container: &Container) {
         });
 }
 
-fn docker_actions(ui: &mut Ui, id: &str, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+fn docker_actions(
+    ui: &mut Ui,
+    id: &str,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
     puffin::profile_function!();
 
     ui.horizontal(|ui| {
         if ui.button("Start").clicked() {
-            start_container(id.to_owned(), tx, rt)
+            start_container(id.to_owned(), tx, rt, server_address.clone())
         }
         if ui.button("Stop").clicked() {
-            stop_container(id.to_owned(), tx, rt)
+            stop_container(id.to_owned(), tx, rt, server_address.clone())
         }
         if ui.button("Remove").clicked() {
-            remove_container(id.to_owned(), tx, rt)
+            remove_container(id.to_owned(), tx, rt, server_address)
         }
     });
 }
 
-fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+fn start_container(
+    id: String,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
     puffin::profile_function!();
 
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::start_container(id).await {
+        if let Err(err) = state::start_container(id, server_address.clone()).await {
             error!("{err:?}");
         }
 
-        if let Err(err) = state::update(tx).await {
-            error!("{err:?}");
-        }
-    });
-}
-
-fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
-    puffin::profile_function!();
-
-    let tx = tx.clone();
-
-    rt.spawn(async move {
-        if let Err(err) = state::stop_container(id).await {
-            error!("{err:?}");
-        }
-
-        if let Err(err) = state::update(tx).await {
+        if let Err(err) = state::update(tx, server_address).await {
             error!("{err:?}");
         }
     });
 }
 
-fn remove_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+fn stop_container(
+    id: String,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
     puffin::profile_function!();
 
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::remove_container(id).await {
+        if let Err(err) = state::stop_container(id, server_address.clone()).await {
             error!("{err:?}");
         }
 
-        if let Err(err) = state::update(tx).await {
+        if let Err(err) = state::update(tx, server_address).await {
+            error!("{err:?}");
+        }
+    });
+}
+
+fn remove_container(
+    id: String,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
+    puffin::profile_function!();
+
+    let tx = tx.clone();
+
+    rt.spawn(async move {
+        if let Err(err) = state::remove_container(id, server_address.clone()).await {
+            error!("{err:?}");
+        }
+
+        if let Err(err) = state::update(tx, server_address).await {
             error!("{err:?}");
         }
     });

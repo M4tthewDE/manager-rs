@@ -23,12 +23,12 @@ pub struct State {
     pub info: Info,
 }
 
-pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
+pub async fn update(tx: Sender<StateChangeMessage>, server_address: String) -> Result<()> {
     let start = Instant::now();
     let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
-        Box::pin(update_containers()),
-        Box::pin(update_info()),
-        Box::pin(update_version()),
+        Box::pin(update_containers(server_address.clone())),
+        Box::pin(update_info(server_address.clone())),
+        Box::pin(update_version(server_address.clone())),
     ];
 
     for result in future::join_all(futures).await {
@@ -43,14 +43,14 @@ pub async fn update(tx: Sender<StateChangeMessage>) -> Result<()> {
     Ok(())
 }
 
-async fn update_containers() -> Result<StateChangeMessage> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+async fn update_containers(server_address: String) -> Result<StateChangeMessage> {
+    let mut client = DockerClient::connect(server_address.clone()).await?;
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
 
     let mut containers = Vec::new();
     for c in &response.get_ref().container_list {
-        let logs = get_logs(c.id.clone()).await?;
+        let logs = get_logs(c.id.clone(), server_address.clone()).await?;
         containers.push(Container::new(c, logs)?);
     }
 
@@ -59,8 +59,8 @@ async fn update_containers() -> Result<StateChangeMessage> {
     }))
 }
 
-async fn update_version() -> Result<StateChangeMessage> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+async fn update_version(server_address: String) -> Result<StateChangeMessage> {
+    let mut client = DockerClient::connect(server_address).await?;
     let request = tonic::Request::new(Empty {});
     let version = Version::from(client.version(request).await?.get_ref());
 
@@ -69,15 +69,15 @@ async fn update_version() -> Result<StateChangeMessage> {
     }))
 }
 
-async fn get_logs(id: String) -> Result<Vec<String>> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+async fn get_logs(id: String, server_address: String) -> Result<Vec<String>> {
+    let mut client = DockerClient::connect(server_address).await?;
     let request = tonic::Request::new(ContainerIdentifier { id });
     let response = client.logs_container(request).await?;
     Ok(response.get_ref().lines.clone())
 }
 
-async fn update_info() -> Result<StateChangeMessage> {
-    let mut client = SystemClient::connect("http://[::1]:50051").await?;
+async fn update_info(server_address: String) -> Result<StateChangeMessage> {
+    let mut client = SystemClient::connect(server_address).await?;
     let request = tonic::Request::new(proto::Empty {});
     let response = client.get_info(request).await?;
     let info = Info::from(response.get_ref());
@@ -87,24 +87,24 @@ async fn update_info() -> Result<StateChangeMessage> {
     }))
 }
 
-pub async fn start_container(id: String) -> Result<()> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+pub async fn start_container(id: String, server_address: String) -> Result<()> {
+    let mut client = DockerClient::connect(server_address).await?;
     let request = tonic::Request::new(ContainerIdentifier { id });
     client.start_container(request).await?;
 
     Ok(())
 }
 
-pub async fn stop_container(id: String) -> Result<()> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+pub async fn stop_container(id: String, server_address: String) -> Result<()> {
+    let mut client = DockerClient::connect(server_address).await?;
     let request = tonic::Request::new(ContainerIdentifier { id });
     client.stop_container(request).await?;
 
     Ok(())
 }
 
-pub async fn remove_container(id: String) -> Result<()> {
-    let mut client = DockerClient::connect("http://[::1]:50051").await?;
+pub async fn remove_container(id: String, server_address: String) -> Result<()> {
+    let mut client = DockerClient::connect(server_address).await?;
     let request = tonic::Request::new(ContainerIdentifier { id });
     client.remove_container(request).await?;
 

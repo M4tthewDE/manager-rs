@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use anyhow::Result;
 use serde::Deserialize;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Config {
     pub update_interval: u64,
     pub profiling: bool,
+    pub server_address: String,
 }
 
 impl Config {

@@ -8,7 +8,13 @@ use crate::state::{State, StateChangeMessage};
 mod docker;
 mod info;
 
-pub fn ui(ctx: &Context, state: &State, tx: &Sender<StateChangeMessage>, rt: &Runtime) {
+pub fn ui(
+    ctx: &Context,
+    state: &State,
+    tx: &Sender<StateChangeMessage>,
+    rt: &Runtime,
+    server_address: String,
+) {
     puffin::profile_function!();
     CentralPanel::default().show(ctx, |ui| {
         ui.vertical(|ui| {
@@ -25,7 +31,7 @@ pub fn ui(ctx: &Context, state: &State, tx: &Sender<StateChangeMessage>, rt: &Ru
             info::disks(ui, &state.info.disks);
             ui.add_space(10.0);
 
-            docker::docker(ui, &state.docker_state, tx, rt);
+            docker::docker(ui, &state.docker_state, tx, rt, server_address);
         });
     });
 }

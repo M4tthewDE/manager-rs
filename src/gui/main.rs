@@ -61,7 +61,13 @@ impl eframe::App for App {
         self.update_state();
         self.change_state();
 
-        ui::ui(ctx, &self.state, &self.tx, &self.rt);
+        ui::ui(
+            ctx,
+            &self.state,
+            &self.tx,
+            &self.rt,
+            self.config.server_address.clone(),
+        );
 
         if self.config.profiling {
             puffin_egui::profiler_window(ctx);
@@ -88,9 +94,9 @@ impl App {
 
         if self.last_update.elapsed().as_millis() > self.config.update_interval.into() {
             let tx = self.tx.clone();
-
+            let server_adress = self.config.server_address.clone();
             self.rt.spawn(async move {
-                if let Err(err) = state::update(tx).await {
+                if let Err(err) = state::update(tx, server_adress).await {
                     error!("Update error: {err:?}");
                 }
             });

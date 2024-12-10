@@ -1,2 +1,3 @@
 update_interval = 1000
 profiling = false
+server_address = "http://localhost:8080"

@@ -1,3 +1,5 @@
+use std::net::ToSocketAddrs;
+
 use tonic::transport::Server;
 use tracing::info;
 
@@ -11,9 +13,9 @@ mod proto {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
-    info!("Starting server...");
+    let addr = "0.0.0.0:8080".to_socket_addrs()?.next().unwrap();
 
-    let addr = "[::1]:50051".parse()?;
+    info!("Starting server at {addr:?}");
 
     Server::builder()
         .add_service(docker::service())
