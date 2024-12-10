@@ -1,4 +1,5 @@
 use tonic::transport::Server;
+use tracing::info;
 
 mod docker;
 mod system;
@@ -10,6 +11,7 @@ mod proto {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
+    info!("Starting server...");
 
     let addr = "[::1]:50051".parse()?;
 
