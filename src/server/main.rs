@@ -1,8 +1,8 @@
-use std::net::ToSocketAddrs;
-
+use config::Config;
 use tonic::transport::Server;
 use tracing::info;
 
+mod config;
 mod docker;
 mod system;
 
@@ -13,14 +13,14 @@ mod proto {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
-    let addr = "0.0.0.0:8080".to_socket_addrs()?.next().unwrap();
+    let config = Config::new("config.toml".into())?;
 
-    info!("Starting server at {addr:?}");
+    info!("Starting server at {:?}", config.address);
 
     Server::builder()
         .add_service(docker::service())
         .add_service(system::service())
-        .serve(addr)
+        .serve(config.address)
         .await?;
 
     Ok(())
