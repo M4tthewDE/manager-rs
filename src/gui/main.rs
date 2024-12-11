@@ -7,7 +7,6 @@ use tracing::error;
 
 use anyhow::Result;
 use state::{State, StateChangeMessage};
-use std::path::PathBuf;
 use tokio::runtime;
 
 mod config;
@@ -17,7 +16,7 @@ mod ui;
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let config = Config::new(PathBuf::from("config.toml"))?;
+    let config = Config::new("config.toml".into())?;
 
     if config.profiling {
         puffin::set_scopes_on(true);
@@ -61,13 +60,7 @@ impl eframe::App for App {
         self.update_state();
         self.change_state();
 
-        ui::ui(
-            ctx,
-            &self.state,
-            &self.tx,
-            &self.rt,
-            self.config.server_address.clone(),
-        );
+        ui::ui(ctx, &self.state, &self.tx, &self.rt, self.config.clone());
 
         if self.config.profiling {
             puffin_egui::profiler_window(ctx);
@@ -94,9 +87,9 @@ impl App {
 
         if self.last_update.elapsed().as_millis() > self.config.update_interval.into() {
             let tx = self.tx.clone();
-            let server_adress = self.config.server_address.clone();
+            let config = self.config.clone();
             self.rt.spawn(async move {
-                if let Err(err) = state::update(tx, server_adress).await {
+                if let Err(err) = state::update(tx, config).await {
                     error!("Update error: {err:?}");
                 }
             });

@@ -3,8 +3,12 @@ use std::sync::mpsc::Sender;
 use egui::{CentralPanel, Color32, Context, RichText};
 use tokio::runtime::Runtime;
 
-use crate::state::{State, StateChangeMessage};
+use crate::{
+    config::Config,
+    state::{State, StateChangeMessage},
+};
 
+mod compose;
 mod docker;
 mod info;
 
@@ -13,7 +17,7 @@ pub fn ui(
     state: &State,
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
-    server_address: String,
+    config: Config,
 ) {
     puffin::profile_function!();
     CentralPanel::default().show(ctx, |ui| {
@@ -31,7 +35,10 @@ pub fn ui(
             info::disks(ui, &state.info.disks);
             ui.add_space(10.0);
 
-            docker::docker(ui, &state.docker_state, tx, rt, server_address);
+            docker::docker(ui, &state.docker_state, tx, rt, config);
+            ui.add_space(10.0);
+
+            compose::compose(ui, &state.compose_files);
         });
     });
 }

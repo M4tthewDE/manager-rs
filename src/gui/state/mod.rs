@@ -1,13 +1,18 @@
 use anyhow::Result;
+use compose::ComposeFile;
 use docker::{Container, DockerState, Version};
 use futures::future::{self, BoxFuture};
 use info::Info;
 use proto::system_client::SystemClient;
 use proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
+use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 use tracing::warn;
 
+use crate::config::Config;
+
+pub mod compose;
 pub mod docker;
 pub mod info;
 
@@ -21,14 +26,16 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 pub struct State {
     pub docker_state: DockerState,
     pub info: Info,
+    pub compose_files: Vec<ComposeFile>,
 }
 
-pub async fn update(tx: Sender<StateChangeMessage>, server_address: String) -> Result<()> {
+pub async fn update(tx: Sender<StateChangeMessage>, config: Config) -> Result<()> {
     let start = Instant::now();
     let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
-        Box::pin(update_containers(server_address.clone())),
-        Box::pin(update_info(server_address.clone())),
-        Box::pin(update_version(server_address.clone())),
+        Box::pin(update_containers(config.server_address.clone())),
+        Box::pin(update_info(config.server_address.clone())),
+        Box::pin(update_version(config.server_address.clone())),
+        Box::pin(update_compose_files(config.docker_compose_path.clone())),
     ];
 
     for result in future::join_all(futures).await {
@@ -109,4 +116,15 @@ pub async fn remove_container(id: String, server_address: String) -> Result<()> 
     client.remove_container(request).await?;
 
     Ok(())
+}
+
+async fn update_compose_files(path: PathBuf) -> Result<StateChangeMessage> {
+    let mut files = Vec::new();
+    for p in path.read_dir()? {
+        files.push(ComposeFile::new(p?)?);
+    }
+
+    Ok(Box::new(move |state: &mut State| {
+        state.compose_files = files;
+    }))
 }

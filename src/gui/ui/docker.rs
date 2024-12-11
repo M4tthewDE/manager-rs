@@ -4,10 +4,13 @@ use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use tokio::runtime::Runtime;
 use tracing::error;
 
-use crate::state::{
-    self,
-    docker::{Container, DockerState, Port, Version},
-    StateChangeMessage,
+use crate::{
+    config::Config,
+    state::{
+        self,
+        docker::{Container, DockerState, Port, Version},
+        StateChangeMessage,
+    },
 };
 
 pub fn docker(
@@ -15,7 +18,7 @@ pub fn docker(
     docker_state: &DockerState,
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
-    server_address: String,
+    config: Config,
 ) {
     puffin::profile_function!();
 
@@ -23,7 +26,7 @@ pub fn docker(
     version(ui, &docker_state.version);
     ScrollArea::vertical().id_source("docker").show(ui, |ui| {
         for c in &docker_state.containers {
-            container(ui, c, tx, rt, server_address.clone());
+            container(ui, c, tx, rt, config.clone());
         }
     });
 }
@@ -46,7 +49,7 @@ fn container(
     container: &Container,
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
-    server_address: String,
+    config: Config,
 ) {
     puffin::profile_function!();
 
@@ -78,7 +81,7 @@ fn container(
         });
 
         logs(ui, container);
-        docker_actions(ui, &container.id, tx, rt, server_address);
+        docker_actions(ui, &container.id, tx, rt, config);
     });
 }
 
@@ -125,81 +128,66 @@ fn docker_actions(
     id: &str,
     tx: &Sender<StateChangeMessage>,
     rt: &Runtime,
-    server_address: String,
+    config: Config,
 ) {
     puffin::profile_function!();
 
     ui.horizontal(|ui| {
         if ui.button("Start").clicked() {
-            start_container(id.to_owned(), tx, rt, server_address.clone())
+            start_container(id.to_owned(), tx, rt, config.clone())
         }
         if ui.button("Stop").clicked() {
-            stop_container(id.to_owned(), tx, rt, server_address.clone())
+            stop_container(id.to_owned(), tx, rt, config.clone())
         }
         if ui.button("Remove").clicked() {
-            remove_container(id.to_owned(), tx, rt, server_address)
+            remove_container(id.to_owned(), tx, rt, config.clone())
         }
     });
 }
 
-fn start_container(
-    id: String,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    server_address: String,
-) {
+fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
     puffin::profile_function!();
 
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::start_container(id, server_address.clone()).await {
+        if let Err(err) = state::start_container(id, config.server_address.clone()).await {
             error!("{err:?}");
         }
 
-        if let Err(err) = state::update(tx, server_address).await {
-            error!("{err:?}");
-        }
-    });
-}
-
-fn stop_container(
-    id: String,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    server_address: String,
-) {
-    puffin::profile_function!();
-
-    let tx = tx.clone();
-
-    rt.spawn(async move {
-        if let Err(err) = state::stop_container(id, server_address.clone()).await {
-            error!("{err:?}");
-        }
-
-        if let Err(err) = state::update(tx, server_address).await {
+        if let Err(err) = state::update(tx, config).await {
             error!("{err:?}");
         }
     });
 }
 
-fn remove_container(
-    id: String,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    server_address: String,
-) {
+fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
     puffin::profile_function!();
 
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::remove_container(id, server_address.clone()).await {
+        if let Err(err) = state::stop_container(id, config.server_address.clone()).await {
             error!("{err:?}");
         }
 
-        if let Err(err) = state::update(tx, server_address).await {
+        if let Err(err) = state::update(tx, config).await {
+            error!("{err:?}");
+        }
+    });
+}
+
+fn remove_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
+    puffin::profile_function!();
+
+    let tx = tx.clone();
+
+    rt.spawn(async move {
+        if let Err(err) = state::remove_container(id, config.server_address.clone()).await {
+            error!("{err:?}");
+        }
+
+        if let Err(err) = state::update(tx, config).await {
             error!("{err:?}");
         }
     });

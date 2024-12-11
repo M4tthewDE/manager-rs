@@ -8,6 +8,7 @@ pub struct Config {
     pub update_interval: u64,
     pub profiling: bool,
     pub server_address: String,
+    pub docker_compose_path: PathBuf,
 }
 
 impl Config {
