@@ -1,12 +1,10 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use compose::ComposeFileDiff;
 use docker::{Container, DockerState, Version};
 use futures::future::{self, BoxFuture};
 use info::Info;
-use proto::compose_client::ComposeClient;
 use proto::system_client::SystemClient;
-use proto::DiffRequest;
-use proto::{docker_client::DockerClient, ComposeFile, ContainerIdentifier, Empty};
+use proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 use tracing::warn;
@@ -36,7 +34,7 @@ pub async fn update(tx: Sender<StateChangeMessage>, config: Config) -> Result<()
         Box::pin(update_containers(config.server_address.clone())),
         Box::pin(update_info(config.server_address.clone())),
         Box::pin(update_version(config.server_address.clone())),
-        Box::pin(update_compose_files(config)),
+        Box::pin(compose::update_files(config)),
     ];
 
     for result in future::join_all(futures).await {
@@ -117,42 +115,4 @@ pub async fn remove_container(id: String, server_address: String) -> Result<()> 
     client.remove_container(request).await?;
 
     Ok(())
-}
-
-async fn update_compose_files(config: Config) -> Result<StateChangeMessage> {
-    let mut files = Vec::new();
-    for p in config.docker_compose_path.read_dir()? {
-        let p = p?;
-        files.push(ComposeFile {
-            name: p
-                .file_name()
-                .to_str()
-                .context("invalid file name {p:?}")?
-                .to_string(),
-            content: std::fs::read_to_string(p.path())?,
-        });
-    }
-
-    let diffs = diff_compose_files(files, config.server_address).await?;
-
-    Ok(Box::new(move |state: &mut State| {
-        state.compose_file_diffs = diffs;
-    }))
-}
-
-async fn diff_compose_files(
-    files: Vec<ComposeFile>,
-    server_address: String,
-) -> Result<Vec<ComposeFileDiff>> {
-    let mut client = ComposeClient::connect(server_address).await?;
-
-    let request = tonic::Request::new(DiffRequest { files });
-    let res = client.diff(request).await?;
-
-    Ok(res
-        .get_ref()
-        .diffs
-        .iter()
-        .map(ComposeFileDiff::from)
-        .collect())
 }
