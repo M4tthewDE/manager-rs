@@ -89,3 +89,31 @@ message ContainerIdentifier {
 message LogsReply {
     repeated string lines = 1;
 }
+
+service Compose {
+    rpc Diff(DiffRequest) returns (DiffReply);
+}
+
+message DiffRequest {
+    repeated ComposeFile files = 1;
+}
+
+message ComposeFile {
+    string name = 1;
+    string content = 2;
+}
+
+enum DiffResult {
+    New = 0;
+    Same = 1;
+    Modified = 2;
+}
+
+message ComposeFileDiff {
+    string name = 1;
+    DiffResult result = 2;
+}
+
+message DiffReply {
+    repeated ComposeFileDiff diffs = 1; 
+}

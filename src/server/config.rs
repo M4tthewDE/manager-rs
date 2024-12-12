@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[derive(Deserialize, Clone, Debug)]
 pub struct Config {
     pub address: SocketAddr,
+    pub docker_compose_path: PathBuf,
 }
 
 impl Config {

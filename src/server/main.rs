@@ -2,6 +2,7 @@ use config::Config;
 use tonic::transport::Server;
 use tracing::info;
 
+mod compose;
 mod config;
 mod docker;
 mod system;
@@ -20,6 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(docker::service())
         .add_service(system::service())
+        .add_service(compose::service(config.clone()))
         .serve(config.address)
         .await?;
 

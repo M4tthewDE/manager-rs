@@ -38,7 +38,7 @@ pub fn ui(
             docker::docker(ui, &state.docker_state, tx, rt, config);
             ui.add_space(10.0);
 
-            compose::compose(ui, &state.compose_files);
+            compose::compose(ui, &state.compose_file_diffs);
         });
     });
 }
