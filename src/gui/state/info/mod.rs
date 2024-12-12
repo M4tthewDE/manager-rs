@@ -1,8 +1,12 @@
+use anyhow::Result;
 use cpu::Cpu;
 use disk::Disk;
 use memory::Memory;
 
-use super::proto::InfoReply;
+use super::{
+    proto::{system_client::SystemClient, Empty, InfoReply},
+    State, StateChangeMessage,
+};
 
 pub mod cpu;
 pub mod disk;
@@ -44,4 +48,15 @@ impl From<&InfoReply> for Info {
             cpus,
         }
     }
+}
+
+pub async fn update_info(server_address: String) -> Result<StateChangeMessage> {
+    let mut client = SystemClient::connect(server_address).await?;
+    let request = tonic::Request::new(Empty {});
+    let response = client.get_info(request).await?;
+    let info = Info::from(response.get_ref());
+
+    Ok(Box::new(move |state: &mut State| {
+        state.info = info;
+    }))
 }

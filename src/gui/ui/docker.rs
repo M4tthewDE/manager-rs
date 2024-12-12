@@ -151,7 +151,7 @@ fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, co
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::start_container(id, config.server_address.clone()).await {
+        if let Err(err) = state::docker::start_container(id, config.server_address.clone()).await {
             error!("{err:?}");
         }
 
@@ -167,7 +167,7 @@ fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, con
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::stop_container(id, config.server_address.clone()).await {
+        if let Err(err) = state::docker::stop_container(id, config.server_address.clone()).await {
             error!("{err:?}");
         }
 
@@ -183,7 +183,7 @@ fn remove_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, c
     let tx = tx.clone();
 
     rt.spawn(async move {
-        if let Err(err) = state::remove_container(id, config.server_address.clone()).await {
+        if let Err(err) = state::docker::remove_container(id, config.server_address.clone()).await {
             error!("{err:?}");
         }
 
