@@ -5,6 +5,7 @@ pub enum DiffResult {
     New,
     Same,
     Modified,
+    Removed,
 }
 
 impl From<i32> for DiffResult {
@@ -13,6 +14,7 @@ impl From<i32> for DiffResult {
             0 => Self::New,
             1 => Self::Same,
             2 => Self::Modified,
+            3 => Self::Removed,
             _ => Self::Same,
         }
     }

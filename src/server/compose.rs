@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use tonic::{Request, Response, Status};
 
 use crate::{
@@ -30,15 +31,45 @@ pub fn service(config: Config) -> ComposeServer<ComposeService> {
 #[tonic::async_trait]
 impl Compose for ComposeService {
     async fn diff(&self, req: Request<DiffRequest>) -> Result<Response<DiffReply>, Status> {
-        let diffs = req
-            .get_ref()
-            .files
-            .iter()
-            .map(|f| self.diff(f.clone()))
-            .collect::<anyhow::Result<Vec<ComposeFileDiff>>>()
+        let diffs = self
+            .calculate_diffs(req.get_ref())
             .map_err(|e| Status::from_error(e.into()))?;
 
         Ok(Response::new(DiffReply { diffs }))
+    }
+}
+
+impl ComposeService {
+    fn calculate_diffs(&self, req: &DiffRequest) -> anyhow::Result<Vec<ComposeFileDiff>> {
+        let mut diffs = req
+            .files
+            .iter()
+            .map(|f| self.diff(f.clone()))
+            .collect::<anyhow::Result<Vec<ComposeFileDiff>>>()?;
+
+        for dir_entry in self.docker_compose_path.read_dir()? {
+            let dir_entry = dir_entry?;
+            let name = dir_entry.file_name().to_str().context("")?.to_string();
+
+            if Self::got_removed(&name, &req.files) {
+                diffs.push(ComposeFileDiff {
+                    name: name.to_string(),
+                    result: DiffResult::Removed.into(),
+                })
+            }
+        }
+
+        Ok(diffs)
+    }
+
+    fn got_removed(name: &str, files: &[ComposeFile]) -> bool {
+        for file in files {
+            if *file.name == *name {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

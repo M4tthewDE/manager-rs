@@ -21,6 +21,7 @@ pub fn file(ui: &mut Ui, diff: &ComposeFileDiff) {
             DiffResult::New => ui.label(RichText::new("New").color(Color32::GREEN)),
             DiffResult::Same => ui.label(RichText::new("Unchanged").color(Color32::GRAY)),
             DiffResult::Modified => ui.label(RichText::new("Modified").color(Color32::YELLOW)),
+            DiffResult::Removed => ui.label(RichText::new("Removed").color(Color32::RED)),
         }
     });
 }

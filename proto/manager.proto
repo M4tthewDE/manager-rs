@@ -107,6 +107,7 @@ enum DiffResult {
     New = 0;
     Same = 1;
     Modified = 2;
+    Removed = 3;
 }
 
 message ComposeFileDiff {
