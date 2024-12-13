@@ -1,12 +1,7 @@
-use crate::state::proto;
+use crate::state::proto::{self, docker_client::DockerClient, ContainerIdentifier, Empty};
 use anyhow::Result;
 use chrono::DateTime;
 use chrono_humanize::HumanTime;
-
-use super::{
-    proto::{docker_client::DockerClient, ContainerIdentifier, Empty},
-    State, StateChangeMessage,
-};
 
 pub struct Container {
     pub id: String,
@@ -49,36 +44,7 @@ impl From<&proto::Port> for Port {
     }
 }
 
-pub struct Version {
-    pub version: String,
-    pub api_version: String,
-}
-
-impl From<&proto::VersionReply> for Version {
-    fn from(v: &proto::VersionReply) -> Self {
-        Version {
-            version: v.version.clone(),
-            api_version: v.api_version.clone(),
-        }
-    }
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Self {
-            version: "n/a".to_string(),
-            api_version: "n/a".to_string(),
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct DockerState {
-    pub containers: Vec<Container>,
-    pub version: Version,
-}
-
-pub async fn update_containers(server_address: String) -> Result<StateChangeMessage> {
+pub async fn get_containers(server_address: String) -> Result<Vec<Container>> {
     let mut client = DockerClient::connect(server_address.clone()).await?;
     let request = tonic::Request::new(Empty {});
     let response = client.list_containers(request).await?;
@@ -89,19 +55,7 @@ pub async fn update_containers(server_address: String) -> Result<StateChangeMess
         containers.push(Container::new(c, logs)?);
     }
 
-    Ok(Box::new(move |state: &mut State| {
-        state.docker_state.containers = containers;
-    }))
-}
-
-pub async fn update_version(server_address: String) -> Result<StateChangeMessage> {
-    let mut client = DockerClient::connect(server_address).await?;
-    let request = tonic::Request::new(Empty {});
-    let version = Version::from(client.version(request).await?.get_ref());
-
-    Ok(Box::new(move |state: &mut State| {
-        state.docker_state.version = version;
-    }))
+    Ok(containers)
 }
 
 async fn get_logs(id: String, server_address: String) -> Result<Vec<String>> {

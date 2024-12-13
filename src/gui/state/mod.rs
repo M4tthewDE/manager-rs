@@ -29,9 +29,8 @@ pub struct State {
 pub async fn update(tx: Sender<StateChangeMessage>, config: Config) -> Result<()> {
     let start = Instant::now();
     let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
-        Box::pin(docker::update_containers(config.server_address.clone())),
+        Box::pin(docker::update(config.server_address.clone())),
         Box::pin(info::update_info(config.server_address.clone())),
-        Box::pin(docker::update_version(config.server_address.clone())),
         Box::pin(compose::update_files(config)),
     ];
 
