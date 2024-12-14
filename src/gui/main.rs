@@ -4,15 +4,17 @@ use std::{
     time::{Duration, Instant},
 };
 use tracing::error;
+use update::StateChangeMessage;
 
 use anyhow::Result;
-use state::{State, StateChangeMessage};
+use state::State;
 use tokio::runtime;
 
 mod client;
 mod config;
 mod state;
 mod ui;
+mod update;
 
 pub mod proto {
     tonic::include_proto!("manager");
@@ -94,7 +96,7 @@ impl App {
             let tx = self.tx.clone();
             let config = self.config.clone();
             self.rt.spawn(async move {
-                if let Err(err) = state::update(tx, config).await {
+                if let Err(err) = update::update(tx, config).await {
                     error!("Update error: {err:?}");
                 }
             });

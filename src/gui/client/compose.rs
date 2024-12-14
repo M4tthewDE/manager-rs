@@ -1,26 +1,10 @@
 use anyhow::Result;
 
-use crate::{
-    config::Config,
-    state::{compose::ComposeFileDiff, State, StateChangeMessage},
-};
+use crate::state::compose::ComposeFileDiff;
 
 use crate::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
 
-pub async fn update_files(config: Config) -> Result<StateChangeMessage> {
-    let mut files = Vec::new();
-    for dir_entry in config.docker_compose_path.read_dir()? {
-        files.push(ComposeFile::new(dir_entry?)?);
-    }
-
-    let diffs = diff_files(files, config.server_address).await?;
-
-    Ok(Box::new(move |state: &mut State| {
-        state.compose_file_diffs = diffs;
-    }))
-}
-
-async fn diff_files(
+pub async fn diff_files(
     files: Vec<ComposeFile>,
     server_address: String,
 ) -> Result<Vec<ComposeFileDiff>> {
