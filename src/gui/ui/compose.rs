@@ -2,10 +2,8 @@ use egui::{Color32, RichText, Ui};
 use tracing::error;
 
 use crate::{
-    state::{
-        self,
-        compose::{ComposeFileDiff, DiffResult},
-    },
+    client,
+    state::compose::{ComposeFileDiff, DiffResult},
     App,
 };
 
@@ -51,7 +49,7 @@ impl App {
         let d = diff.clone();
 
         self.rt.spawn(async move {
-            if let Err(err) = state::compose::push_file(server_address, d).await {
+            if let Err(err) = client::compose::push_file(server_address, d).await {
                 error!("{err:?}");
             }
         });

@@ -1,9 +1,20 @@
 use crate::state::{
     docker::{container::Container, version::Version},
     proto::{docker_client::DockerClient, ContainerIdentifier, Empty},
+    State, StateChangeMessage,
 };
 
 use anyhow::Result;
+
+pub async fn update(server_address: String) -> Result<StateChangeMessage> {
+    let containers = get_containers(server_address.clone()).await?;
+    let version = get_version(server_address).await?;
+
+    Ok(Box::new(move |state: &mut State| {
+        state.docker_state.containers = containers;
+        state.docker_state.version = version;
+    }))
+}
 
 pub async fn start_container(id: String, server_address: String) -> Result<()> {
     let mut client = DockerClient::connect(server_address).await?;
