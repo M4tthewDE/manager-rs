@@ -79,17 +79,10 @@ impl App {
     fn start_container(&self, id: String) {
         puffin::profile_function!();
 
-        let tx = self.tx.clone();
-        let config = self.config.clone();
+        let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) =
-                state::docker::container::start_container(id, config.server_address.clone()).await
-            {
-                error!("{err:?}");
-            }
-
-            if let Err(err) = state::update(tx, config).await {
+            if let Err(err) = state::docker::container::start_container(id, server_address).await {
                 error!("{err:?}");
             }
         });
@@ -98,17 +91,10 @@ impl App {
     fn stop_container(&self, id: String) {
         puffin::profile_function!();
 
-        let tx = self.tx.clone();
-        let config = self.config.clone();
+        let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) =
-                state::docker::container::stop_container(id, config.server_address.clone()).await
-            {
-                error!("{err:?}");
-            }
-
-            if let Err(err) = state::update(tx, config).await {
+            if let Err(err) = state::docker::container::stop_container(id, server_address).await {
                 error!("{err:?}");
             }
         });
@@ -117,17 +103,10 @@ impl App {
     fn remove_container(&self, id: String) {
         puffin::profile_function!();
 
-        let tx = self.tx.clone();
-        let config = self.config.clone();
+        let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) =
-                state::docker::container::remove_container(id, config.server_address.clone()).await
-            {
-                error!("{err:?}");
-            }
-
-            if let Err(err) = state::update(tx, config).await {
+            if let Err(err) = state::docker::container::remove_container(id, server_address).await {
                 error!("{err:?}");
             }
         });

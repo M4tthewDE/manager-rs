@@ -47,16 +47,11 @@ impl App {
     }
 
     fn push(&self, diff: &ComposeFileDiff) {
-        let tx = self.tx.clone();
-        let config = self.config.clone();
-
+        let server_address = self.config.clone().server_address;
         let d = diff.clone();
-        self.rt.spawn(async move {
-            if let Err(err) = state::compose::push_file(config.clone().server_address, d).await {
-                error!("{err:?}");
-            }
 
-            if let Err(err) = state::update(tx, config).await {
+        self.rt.spawn(async move {
+            if let Err(err) = state::compose::push_file(server_address, d).await {
                 error!("{err:?}");
             }
         });
