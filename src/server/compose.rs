@@ -7,7 +7,7 @@ use crate::{
     config::Config,
     proto::{
         compose_server::{Compose, ComposeServer},
-        ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult,
+        ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult, Empty, PushRequest,
     },
 };
 
@@ -37,6 +37,13 @@ impl Compose for ComposeService {
 
         Ok(Response::new(DiffReply { diffs }))
     }
+
+    async fn push(&self, req: Request<PushRequest>) -> Result<Response<Empty>, Status> {
+        self.push_file(req.get_ref())
+            .map_err(|e| Status::from_error(e.into()))?;
+
+        Ok(Response::new(Empty {}))
+    }
 }
 
 impl ComposeService {
@@ -55,6 +62,7 @@ impl ComposeService {
                 diffs.push(ComposeFileDiff {
                     name: name.to_string(),
                     result: DiffResult::Removed.into(),
+                    content: "".to_string(),
                 })
             }
         }
@@ -71,6 +79,24 @@ impl ComposeService {
 
         true
     }
+
+    fn push_file(&self, req: &PushRequest) -> anyhow::Result<()> {
+        let file = req.file.clone().context("no file in {req:?}")?;
+        let mut path = self.docker_compose_path.clone();
+        path.push(file.name);
+
+        match req.diff_result() {
+            DiffResult::Same => (),
+            DiffResult::New | DiffResult::Modified => {
+                std::fs::write(path, file.content)?;
+            }
+            DiffResult::Removed => {
+                std::fs::remove_file(path)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl ComposeService {
@@ -85,6 +111,7 @@ impl ComposeService {
         Ok(ComposeFileDiff {
             name: file.name,
             result: DiffResult::New.into(),
+            content: file.content,
         })
     }
 
@@ -97,11 +124,13 @@ impl ComposeService {
             Ok(ComposeFileDiff {
                 name: file.name,
                 result: DiffResult::Same.into(),
+                content: file.content,
             })
         } else {
             Ok(ComposeFileDiff {
                 name: file.name,
                 result: DiffResult::Modified.into(),
+                content: file.content,
             })
         }
     }

@@ -4,11 +4,11 @@ use crate::config::Config;
 use anyhow::{Context, Result};
 
 use super::{
-    proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest},
+    proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest},
     State, StateChangeMessage,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DiffResult {
     New,
     Same,
@@ -28,10 +28,22 @@ impl From<i32> for DiffResult {
     }
 }
 
-#[derive(Debug)]
+impl From<DiffResult> for proto::DiffResult {
+    fn from(res: DiffResult) -> Self {
+        match res {
+            DiffResult::New => Self::New,
+            DiffResult::Same => Self::Same,
+            DiffResult::Modified => Self::Modified,
+            DiffResult::Removed => Self::Removed,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ComposeFileDiff {
     pub name: String,
     pub result: DiffResult,
+    content: String,
 }
 
 impl From<&proto::ComposeFileDiff> for ComposeFileDiff {
@@ -39,6 +51,7 @@ impl From<&proto::ComposeFileDiff> for ComposeFileDiff {
         Self {
             name: diff.clone().name,
             result: diff.result.into(),
+            content: diff.clone().content,
         }
     }
 }
@@ -84,4 +97,18 @@ async fn diff_files(
         .iter()
         .map(ComposeFileDiff::from)
         .collect())
+}
+
+pub async fn push_file(server_address: String, file_diff: ComposeFileDiff) -> Result<()> {
+    let mut client = ComposeClient::connect(server_address).await?;
+    let request = tonic::Request::new(PushRequest {
+        file: Some(proto::ComposeFile {
+            name: file_diff.name.clone(),
+            content: file_diff.content,
+        }),
+        diff_result: proto::DiffResult::from(file_diff.result).into(),
+    });
+
+    client.push(request).await?;
+    Ok(())
 }

@@ -92,6 +92,7 @@ message LogsReply {
 
 service Compose {
     rpc Diff(DiffRequest) returns (DiffReply);
+    rpc Push(PushRequest) returns (Empty);
 }
 
 message DiffRequest {
@@ -113,8 +114,14 @@ enum DiffResult {
 message ComposeFileDiff {
     string name = 1;
     DiffResult result = 2;
+    string content = 3;
 }
 
 message DiffReply {
     repeated ComposeFileDiff diffs = 1; 
+}
+
+message PushRequest {
+    ComposeFile file = 1;
+    DiffResult diffResult = 2;
 }

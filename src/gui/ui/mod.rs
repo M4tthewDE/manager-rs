@@ -35,10 +35,10 @@ pub fn ui(
             info::disks(ui, &state.info.disks);
             ui.add_space(10.0);
 
-            docker::docker(ui, &state.docker_state, tx, rt, config);
+            docker::docker(ui, &state.docker_state, tx, rt, config.clone());
             ui.add_space(10.0);
 
-            compose::compose(ui, &state.compose_file_diffs);
+            compose::compose(ui, &state.compose_file_diffs, tx, rt, config);
         });
     });
 }
