@@ -14,14 +14,7 @@ impl App {
                 ui.heading(RichText::new("Server manager").color(Color32::WHITE));
                 ui.add_space(10.0);
 
-                ui.horizontal(|ui| {
-                    info::info(ui, &self.state.info);
-                    info::memory(ui, &self.state.info.memory);
-                    info::cpus(ui, &self.state.info.cpus);
-                });
-                ui.add_space(10.0);
-
-                info::disks(ui, &self.state.info.disks);
+                info::info(ui, &self.state.info);
                 ui.add_space(10.0);
 
                 self.docker(ui);
