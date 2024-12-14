@@ -1,5 +1,4 @@
-use crate::state::proto::{self, docker_client::DockerClient, Empty};
-use anyhow::Result;
+use crate::state::proto::{self};
 
 pub struct Version {
     pub version: String,
@@ -22,10 +21,4 @@ impl Default for Version {
             api_version: "n/a".to_string(),
         }
     }
-}
-
-pub async fn get_version(server_address: String) -> Result<Version> {
-    let mut client = DockerClient::connect(server_address).await?;
-    let request = tonic::Request::new(Empty {});
-    Ok(Version::from(client.version(request).await?.get_ref()))
 }

@@ -13,7 +13,7 @@ pub mod compose;
 pub mod docker;
 pub mod info;
 
-mod proto {
+pub mod proto {
     tonic::include_proto!("manager");
 }
 

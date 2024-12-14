@@ -9,6 +9,7 @@ use anyhow::Result;
 use state::{State, StateChangeMessage};
 use tokio::runtime;
 
+mod client;
 mod config;
 mod state;
 mod ui;

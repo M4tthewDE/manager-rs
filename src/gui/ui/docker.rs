@@ -2,12 +2,10 @@ use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui, Widge
 use tracing::error;
 
 use crate::{
-    state::{
-        self,
-        docker::{
-            container::{Container, Port},
-            version::Version,
-        },
+    client,
+    state::docker::{
+        container::{Container, Port},
+        version::Version,
     },
     App,
 };
@@ -82,7 +80,7 @@ impl App {
         let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) = state::docker::container::start_container(id, server_address).await {
+            if let Err(err) = client::docker::start_container(id, server_address).await {
                 error!("{err:?}");
             }
         });
@@ -94,7 +92,7 @@ impl App {
         let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) = state::docker::container::stop_container(id, server_address).await {
+            if let Err(err) = client::docker::stop_container(id, server_address).await {
                 error!("{err:?}");
             }
         });
@@ -106,7 +104,7 @@ impl App {
         let server_address = self.config.clone().server_address;
 
         self.rt.spawn(async move {
-            if let Err(err) = state::docker::container::remove_container(id, server_address).await {
+            if let Err(err) = client::docker::remove_container(id, server_address).await {
                 error!("{err:?}");
             }
         });
