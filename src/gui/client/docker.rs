@@ -1,8 +1,9 @@
 use crate::state::{
     docker::{container::Container, version::Version},
-    proto::{docker_client::DockerClient, ContainerIdentifier, Empty},
     State, StateChangeMessage,
 };
+
+use crate::proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 
 use anyhow::Result;
 

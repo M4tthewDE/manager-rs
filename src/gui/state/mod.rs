@@ -14,10 +14,6 @@ pub mod compose;
 pub mod docker;
 pub mod info;
 
-pub mod proto {
-    tonic::include_proto!("manager");
-}
-
 pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 
 #[derive(Default)]

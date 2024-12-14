@@ -14,6 +14,10 @@ mod config;
 mod state;
 mod ui;
 
+pub mod proto {
+    tonic::include_proto!("manager");
+}
+
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 

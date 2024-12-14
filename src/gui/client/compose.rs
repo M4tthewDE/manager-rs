@@ -2,12 +2,10 @@ use anyhow::Result;
 
 use crate::{
     config::Config,
-    state::{
-        compose::ComposeFileDiff,
-        proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest},
-        State, StateChangeMessage,
-    },
+    state::{compose::ComposeFileDiff, State, StateChangeMessage},
 };
+
+use crate::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
 
 pub async fn update_files(config: Config) -> Result<StateChangeMessage> {
     let mut files = Vec::new();

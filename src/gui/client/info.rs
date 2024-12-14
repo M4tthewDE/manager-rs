@@ -1,7 +1,9 @@
-use crate::state::{
-    info::{cpu::Cpu, disk::Disk, memory::Memory, Info},
+use crate::{
     proto::{system_client::SystemClient, Empty, InfoReply},
-    State, StateChangeMessage,
+    state::{
+        info::{cpu::Cpu, disk::Disk, memory::Memory, Info},
+        State, StateChangeMessage,
+    },
 };
 use anyhow::Result;
 

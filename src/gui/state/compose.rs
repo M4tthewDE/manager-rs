@@ -2,7 +2,7 @@ use std::fs::DirEntry;
 
 use anyhow::{Context, Result};
 
-use super::proto::{self, ComposeFile};
+use crate::proto;
 
 #[derive(Debug, Clone)]
 pub enum DiffResult {
@@ -52,9 +52,9 @@ impl From<&proto::ComposeFileDiff> for ComposeFileDiff {
     }
 }
 
-impl ComposeFile {
-    pub fn new(dir_entry: DirEntry) -> Result<ComposeFile> {
-        Ok(ComposeFile {
+impl proto::ComposeFile {
+    pub fn new(dir_entry: DirEntry) -> Result<Self> {
+        Ok(Self {
             name: dir_entry
                 .file_name()
                 .to_str()

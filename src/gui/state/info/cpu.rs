@@ -1,4 +1,4 @@
-use crate::state::proto;
+use crate::proto;
 
 #[derive(Default)]
 pub struct Cpu {

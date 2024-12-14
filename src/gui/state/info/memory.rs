@@ -1,6 +1,6 @@
 use humansize::DECIMAL;
 
-use crate::state::proto::MemoryInfo;
+use crate::proto::MemoryInfo;
 
 pub struct Memory {
     pub total: String,
