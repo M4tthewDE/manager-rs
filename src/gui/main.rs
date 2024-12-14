@@ -60,7 +60,7 @@ impl eframe::App for App {
         self.update_state();
         self.change_state();
 
-        ui::ui(ctx, &self.state, &self.tx, &self.rt, self.config.clone());
+        self.ui(ctx);
 
         if self.config.profiling {
             puffin_egui::profiler_window(ctx);

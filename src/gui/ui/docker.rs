@@ -1,37 +1,142 @@
-use std::sync::mpsc::Sender;
-
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
-use tokio::runtime::Runtime;
 use tracing::error;
 
 use crate::{
-    config::Config,
     state::{
         self,
-        docker::{container::Container, container::Port, version::Version, DockerState},
-        StateChangeMessage,
+        docker::{
+            container::{Container, Port},
+            version::Version,
+        },
     },
+    App,
 };
 
-pub fn docker(
-    ui: &mut Ui,
-    docker_state: &DockerState,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    config: Config,
-) {
-    puffin::profile_function!();
+impl App {
+    pub fn docker(&self, ui: &mut Ui) {
+        puffin::profile_function!();
 
-    ui.heading(RichText::new("Docker").color(Color32::WHITE));
-    version(ui, &docker_state.version);
-    ScrollArea::vertical().id_source("docker").show(ui, |ui| {
-        for c in &docker_state.containers {
-            container(ui, c, tx, rt, config.clone());
-        }
-    });
+        ui.heading(RichText::new("Docker").color(Color32::WHITE));
+        version(ui, &self.state.docker_state.version);
+        ScrollArea::vertical().id_source("docker").show(ui, |ui| {
+            for c in &self.state.docker_state.containers {
+                self.container(ui, c);
+            }
+        });
+    }
+
+    fn container(&self, ui: &mut Ui, container: &Container) {
+        puffin::profile_function!();
+
+        ui.group(|ui| {
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Id").color(Color32::WHITE));
+                    ui.label(&container.id);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Name").color(Color32::WHITE));
+                    ui.label(&container.name);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Image").color(Color32::WHITE));
+                    ui.label(&container.image);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Status").color(Color32::WHITE));
+                    ui.label(&container.status);
+                });
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Created").color(Color32::WHITE));
+                    ui.label(&container.created);
+                });
+                ui.horizontal(|ui| {
+                    ports(ui, &container.ports);
+                });
+            });
+
+            logs(ui, container);
+            self.docker_actions(ui, &container.id);
+        });
+    }
+
+    fn docker_actions(&self, ui: &mut Ui, id: &str) {
+        puffin::profile_function!();
+
+        ui.horizontal(|ui| {
+            if ui.button("Start").clicked() {
+                self.start_container(id.to_owned())
+            }
+            if ui.button("Stop").clicked() {
+                self.stop_container(id.to_owned())
+            }
+            if ui.button("Remove").clicked() {
+                self.remove_container(id.to_owned())
+            }
+        });
+    }
+
+    fn start_container(&self, id: String) {
+        puffin::profile_function!();
+
+        let tx = self.tx.clone();
+        let config = self.config.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) =
+                state::docker::container::start_container(id, config.server_address.clone()).await
+            {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx, config).await {
+                error!("{err:?}");
+            }
+        });
+    }
+
+    fn stop_container(&self, id: String) {
+        puffin::profile_function!();
+
+        let tx = self.tx.clone();
+        let config = self.config.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) =
+                state::docker::container::stop_container(id, config.server_address.clone()).await
+            {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx, config).await {
+                error!("{err:?}");
+            }
+        });
+    }
+
+    fn remove_container(&self, id: String) {
+        puffin::profile_function!();
+
+        let tx = self.tx.clone();
+        let config = self.config.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) =
+                state::docker::container::remove_container(id, config.server_address.clone()).await
+            {
+                error!("{err:?}");
+            }
+
+            if let Err(err) = state::update(tx, config).await {
+                error!("{err:?}");
+            }
+        });
+    }
 }
 
 fn version(ui: &mut Ui, version: &Version) {
+    puffin::profile_function!();
+
     ui.horizontal(|ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new("Version").color(Color32::WHITE));
@@ -41,47 +146,6 @@ fn version(ui: &mut Ui, version: &Version) {
             ui.label(RichText::new("Api version").color(Color32::WHITE));
             ui.label(&version.api_version);
         });
-    });
-}
-
-fn container(
-    ui: &mut Ui,
-    container: &Container,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    config: Config,
-) {
-    puffin::profile_function!();
-
-    ui.group(|ui| {
-        ui.vertical(|ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Id").color(Color32::WHITE));
-                ui.label(&container.id);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Name").color(Color32::WHITE));
-                ui.label(&container.name);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Image").color(Color32::WHITE));
-                ui.label(&container.image);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Status").color(Color32::WHITE));
-                ui.label(&container.status);
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Created").color(Color32::WHITE));
-                ui.label(&container.created);
-            });
-            ui.horizontal(|ui| {
-                ports(ui, &container.ports);
-            });
-        });
-
-        logs(ui, container);
-        docker_actions(ui, &container.id, tx, rt, config);
     });
 }
 
@@ -121,80 +185,4 @@ fn logs(ui: &mut Ui, container: &Container) {
                     },
                 );
         });
-}
-
-fn docker_actions(
-    ui: &mut Ui,
-    id: &str,
-    tx: &Sender<StateChangeMessage>,
-    rt: &Runtime,
-    config: Config,
-) {
-    puffin::profile_function!();
-
-    ui.horizontal(|ui| {
-        if ui.button("Start").clicked() {
-            start_container(id.to_owned(), tx, rt, config.clone())
-        }
-        if ui.button("Stop").clicked() {
-            stop_container(id.to_owned(), tx, rt, config.clone())
-        }
-        if ui.button("Remove").clicked() {
-            remove_container(id.to_owned(), tx, rt, config.clone())
-        }
-    });
-}
-
-fn start_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
-    puffin::profile_function!();
-
-    let tx = tx.clone();
-
-    rt.spawn(async move {
-        if let Err(err) =
-            state::docker::container::start_container(id, config.server_address.clone()).await
-        {
-            error!("{err:?}");
-        }
-
-        if let Err(err) = state::update(tx, config).await {
-            error!("{err:?}");
-        }
-    });
-}
-
-fn stop_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
-    puffin::profile_function!();
-
-    let tx = tx.clone();
-
-    rt.spawn(async move {
-        if let Err(err) =
-            state::docker::container::stop_container(id, config.server_address.clone()).await
-        {
-            error!("{err:?}");
-        }
-
-        if let Err(err) = state::update(tx, config).await {
-            error!("{err:?}");
-        }
-    });
-}
-
-fn remove_container(id: String, tx: &Sender<StateChangeMessage>, rt: &Runtime, config: Config) {
-    puffin::profile_function!();
-
-    let tx = tx.clone();
-
-    rt.spawn(async move {
-        if let Err(err) =
-            state::docker::container::remove_container(id, config.server_address.clone()).await
-        {
-            error!("{err:?}");
-        }
-
-        if let Err(err) = state::update(tx, config).await {
-            error!("{err:?}");
-        }
-    });
 }
