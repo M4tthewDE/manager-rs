@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::Deserialize;
 use tonic::{Request, Response, Status};
 
-use crate::proto;
+use lib::proto;
 
 mod container;
 mod version;

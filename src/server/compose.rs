@@ -3,12 +3,10 @@ use std::path::PathBuf;
 use anyhow::Context;
 use tonic::{Request, Response, Status};
 
-use crate::{
-    config::Config,
-    proto::{
-        compose_server::{Compose, ComposeServer},
-        ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult, Empty, PushRequest,
-    },
+use crate::config::Config;
+use lib::proto::{
+    compose_server::{Compose, ComposeServer},
+    ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult, Empty, PushRequest,
 };
 
 #[derive(Debug)]

@@ -13,7 +13,7 @@ use prost::bytes::Buf;
 use serde::Deserialize;
 
 use crate::docker::Error;
-use crate::proto;
+use lib::proto;
 
 use super::DOCKER_SOCK;
 
