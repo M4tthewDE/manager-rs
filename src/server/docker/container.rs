@@ -149,7 +149,10 @@ pub async fn remove(id: &str) -> Result<()> {
 pub async fn logs(id: &str) -> Result<Vec<String>> {
     let url = Uri::new(
         DOCKER_SOCK,
-        &format!("/v1.47/containers/{}/logs?stdout=true&timestamps=true", id),
+        &format!(
+            "/v1.47/containers/{}/logs?stdout=true&timestamps=true&tail=1000",
+            id
+        ),
     );
 
     let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
