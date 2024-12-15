@@ -1,8 +1,4 @@
-use std::fs::DirEntry;
-
-use anyhow::{Context, Result};
-
-use crate::proto;
+use lib::proto;
 
 #[derive(Debug, Clone)]
 pub enum DiffResult {
@@ -49,18 +45,5 @@ impl From<&proto::ComposeFileDiff> for ComposeFileDiff {
             result: diff.result.into(),
             content: diff.clone().content,
         }
-    }
-}
-
-impl proto::ComposeFile {
-    pub fn new(dir_entry: DirEntry) -> Result<Self> {
-        Ok(Self {
-            name: dir_entry
-                .file_name()
-                .to_str()
-                .context("invalid file name {p:?}")?
-                .to_string(),
-            content: std::fs::read_to_string(dir_entry.path())?,
-        })
     }
 }

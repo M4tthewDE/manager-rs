@@ -1,6 +1,6 @@
 use crate::state::docker::{container::Container, version::Version};
 
-use crate::proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
+use lib::proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 
 use anyhow::Result;
 

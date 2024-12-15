@@ -2,7 +2,7 @@ use anyhow::Result;
 use chrono::DateTime;
 use chrono_humanize::HumanTime;
 
-use crate::proto;
+use lib::proto;
 
 pub struct Container {
     pub id: String,

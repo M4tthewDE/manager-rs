@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::state::compose::ComposeFileDiff;
 
-use crate::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
+use lib::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
 
 pub async fn diff_files(
     files: Vec<ComposeFile>,

@@ -1,4 +1,7 @@
 use proto::{Cpu, Disk};
+use std::fs::DirEntry;
+
+use anyhow::{Context, Result};
 
 pub mod proto {
     tonic::include_proto!("manager");
@@ -23,5 +26,18 @@ impl From<&sysinfo::Disk> for Disk {
             total_space: d.total_space(),
             available_space: d.available_space(),
         }
+    }
+}
+
+impl proto::ComposeFile {
+    pub fn new(dir_entry: DirEntry) -> Result<Self> {
+        Ok(Self {
+            name: dir_entry
+                .file_name()
+                .to_str()
+                .context("invalid file name {p:?}")?
+                .to_string(),
+            content: std::fs::read_to_string(dir_entry.path())?,
+        })
     }
 }

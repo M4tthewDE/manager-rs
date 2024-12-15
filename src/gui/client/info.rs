@@ -1,8 +1,6 @@
-use crate::{
-    proto::{system_client::SystemClient, Empty},
-    state::info::Info,
-};
+use crate::state::info::Info;
 use anyhow::Result;
+use lib::proto::{system_client::SystemClient, Empty};
 
 pub async fn get_info(server_address: String) -> Result<Info> {
     let mut client = SystemClient::connect(server_address).await?;

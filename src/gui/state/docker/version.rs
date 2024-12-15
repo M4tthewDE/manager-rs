@@ -1,4 +1,4 @@
-use crate::proto;
+use lib::proto;
 
 pub struct Version {
     pub version: String,
