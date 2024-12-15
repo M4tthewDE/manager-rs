@@ -1,13 +1,10 @@
-use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui, WidgetText};
+use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use tracing::error;
 
-use crate::{
-    client,
-    state::docker::{
-        container::{Container, Port},
-        version::Version,
-    },
-    App,
+use crate::{client, App};
+use lib::state::docker::{
+    container::{Container, Port},
+    version::Version,
 };
 
 impl App {
@@ -126,22 +123,16 @@ fn version(ui: &mut Ui, version: &Version) {
     });
 }
 
-impl From<&Port> for WidgetText {
-    fn from(p: &Port) -> Self {
-        Self::RichText(RichText::new(format!(
-            "{}->{}/{}",
-            p.public_port, p.private_port, p.port_type
-        )))
-    }
-}
-
 fn ports(ui: &mut Ui, ports: &[Port]) {
     puffin::profile_function!();
 
     ui.label(RichText::new("Ports").color(Color32::WHITE));
     ui.vertical(|ui| {
         for p in ports {
-            ui.label(p);
+            ui.label(format!(
+                "{}->{}/{}",
+                p.public_port, p.private_port, p.port_type
+            ));
         }
     });
 }

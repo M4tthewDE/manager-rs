@@ -3,6 +3,8 @@ use std::fs::DirEntry;
 
 use anyhow::{Context, Result};
 
+pub mod state;
+
 pub mod proto {
     tonic::include_proto!("manager");
 }

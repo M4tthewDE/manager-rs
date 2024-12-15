@@ -9,9 +9,8 @@ use tracing::warn;
 use crate::{
     client::{compose, docker, info},
     config::Config,
-    state::State,
 };
-use lib::proto::ComposeFile;
+use lib::{proto::ComposeFile, state::State};
 
 pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 

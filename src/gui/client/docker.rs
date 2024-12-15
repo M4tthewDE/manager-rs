@@ -1,4 +1,4 @@
-use crate::state::docker::{container::Container, version::Version};
+use lib::state::docker::{container::Container, version::Version};
 
 use lib::proto::{docker_client::DockerClient, ContainerIdentifier, Empty};
 

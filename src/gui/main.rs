@@ -7,12 +7,11 @@ use tracing::error;
 use update::StateChangeMessage;
 
 use anyhow::Result;
-use state::State;
+use lib::state::State;
 use tokio::runtime;
 
 mod client;
 mod config;
-mod state;
 mod ui;
 mod update;
 

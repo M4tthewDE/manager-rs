@@ -1,4 +1,4 @@
-use lib::proto;
+use crate::proto;
 
 #[derive(Debug, Clone)]
 pub enum DiffResult {

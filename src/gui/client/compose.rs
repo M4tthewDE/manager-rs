@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::state::compose::ComposeFileDiff;
+use lib::state::compose::ComposeFileDiff;
 
 use lib::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
 

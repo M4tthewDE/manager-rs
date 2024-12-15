@@ -2,7 +2,7 @@ use cpu::Cpu;
 use disk::Disk;
 use memory::Memory;
 
-use lib::proto::InfoReply;
+use crate::proto::InfoReply;
 
 pub mod cpu;
 pub mod disk;

@@ -1,6 +1,6 @@
 use humansize::DECIMAL;
 
-use lib::proto;
+use crate::proto;
 
 pub struct Disk {
     pub name: String,
