@@ -1,11 +1,13 @@
 use lib::proto::{
     system_server::{System, SystemServer},
-    Cpu, CpuInfo, Disk, DiskInfo, Empty, InfoReply, MemoryInfo,
+    Container, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply, MemoryInfo, Version,
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
+
+use crate::docker;
 
 #[derive(Debug, Default)]
 pub struct SystemService {}
@@ -41,8 +43,27 @@ impl System for SystemService {
             }),
             disk_info: Some(DiskInfo { disks }),
             cpu_info: Some(CpuInfo { cpus }),
+            docker_info: Some(docker_info().await?),
         }))
     }
+}
+
+async fn docker_info() -> Result<DockerInfo, Status> {
+    let version: Version = docker::version::version()
+        .await
+        .map_err(|e| Status::from_error(e.into()))?
+        .into();
+    let container_list: Vec<Container> = docker::container::list()
+        .await
+        .map_err(|e| Status::from_error(e.into()))?
+        .iter()
+        .map(|c| c.into())
+        .collect();
+
+    Ok(DockerInfo {
+        version: Some(version),
+        container_list,
+    })
 }
 
 pub fn service() -> SystemServer<SystemService> {

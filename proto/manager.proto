@@ -7,7 +7,6 @@ service System {
     rpc GetInfo (Empty) returns (InfoReply);
 }
 
-
 message MemoryInfo {
     uint64 total = 1;
     uint64 free = 2;
@@ -36,6 +35,7 @@ message InfoReply {
     MemoryInfo memoryInfo = 5;
     DiskInfo diskInfo = 6;
     CpuInfo cpuInfo = 7;
+    DockerInfo dockerInfo = 8;
 }
 
 message CpuInfo {
@@ -49,15 +49,18 @@ message Cpu {
 }
 
 service Docker {
-    rpc Version (Empty) returns (VersionReply);
-    rpc ListContainers (Empty) returns (ContainerListReply);
     rpc RemoveContainer (ContainerIdentifier) returns (Empty);
     rpc StopContainer (ContainerIdentifier) returns (Empty);
     rpc StartContainer (ContainerIdentifier) returns (Empty);
     rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
 }
 
-message VersionReply {
+message DockerInfo {
+    Version version = 1;
+    repeated Container containerList = 2;
+}
+
+message Version {
     string version = 1;
     string apiVersion = 2;
 }

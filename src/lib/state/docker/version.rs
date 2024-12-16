@@ -5,8 +5,8 @@ pub struct Version {
     pub api_version: String,
 }
 
-impl From<&proto::VersionReply> for Version {
-    fn from(v: &proto::VersionReply) -> Self {
+impl From<&proto::Version> for Version {
+    fn from(v: &proto::Version) -> Self {
         Version {
             version: v.version.clone(),
             api_version: v.api_version.clone(),

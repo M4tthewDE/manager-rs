@@ -4,8 +4,8 @@ use tonic::{Request, Response, Status};
 
 use lib::proto;
 
-mod container;
-mod version;
+pub mod container;
+pub mod version;
 
 const DOCKER_SOCK: &str = "/var/run/docker.sock";
 
@@ -20,20 +20,6 @@ pub struct DockerService {}
 
 #[tonic::async_trait]
 impl proto::docker_server::Docker for DockerService {
-    async fn list_containers(
-        &self,
-        _: Request<proto::Empty>,
-    ) -> Result<Response<proto::ContainerListReply>, Status> {
-        let containers = container::list()
-            .await
-            .map_err(|e| Status::from_error(e.into()))?;
-
-        let container_list: Vec<proto::Container> =
-            containers.iter().map(proto::Container::from).collect();
-
-        Ok(Response::new(proto::ContainerListReply { container_list }))
-    }
-
     async fn start_container(
         &self,
         request: Request<proto::ContainerIdentifier>,
@@ -76,17 +62,6 @@ impl proto::docker_server::Docker for DockerService {
             .map_err(|e| Status::from_error(e.into()))?;
 
         Ok(Response::new(proto::LogsReply { lines }))
-    }
-
-    async fn version(
-        &self,
-        _: Request<proto::Empty>,
-    ) -> Result<Response<proto::VersionReply>, Status> {
-        let version = version::version()
-            .await
-            .map_err(|e| Status::from_error(e.into()))?;
-
-        Ok(Response::new(proto::VersionReply::from(&version)))
     }
 }
 
