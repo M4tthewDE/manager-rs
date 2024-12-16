@@ -5,8 +5,8 @@ use tonic::{Request, Response, Status};
 
 use crate::config::Config;
 use lib::proto::{
-    compose_server::{Compose, ComposeServer},
-    ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult, Empty, PushRequest,
+    compose_server::Compose, ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult,
+    Empty, PushRequest,
 };
 
 #[derive(Debug)]
@@ -20,10 +20,6 @@ impl From<Config> for ComposeService {
             docker_compose_path: config.docker_compose_path,
         }
     }
-}
-
-pub fn service(config: Config) -> ComposeServer<ComposeService> {
-    ComposeServer::new(ComposeService::from(config))
 }
 
 #[tonic::async_trait]
