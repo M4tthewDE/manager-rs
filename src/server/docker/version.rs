@@ -23,11 +23,11 @@ pub struct Version {
     api_version: String,
 }
 
-impl From<&Version> for proto::VersionReply {
-    fn from(v: &Version) -> Self {
+impl From<Version> for proto::Version {
+    fn from(v: Version) -> Self {
         Self {
-            version: v.version.clone(),
-            api_version: v.api_version.clone(),
+            version: v.version,
+            api_version: v.api_version,
         }
     }
 }
