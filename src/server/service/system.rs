@@ -1,6 +1,6 @@
 use lib::proto::{
-    system_server::{System, SystemServer},
-    Container, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply, MemoryInfo, Version,
+    system_server::System, Container, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
+    MemoryInfo, Version,
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
@@ -64,8 +64,4 @@ async fn docker_info() -> Result<DockerInfo, Status> {
         version: Some(version),
         container_list,
     })
-}
-
-pub fn service() -> SystemServer<SystemService> {
-    SystemServer::new(SystemService::default())
 }

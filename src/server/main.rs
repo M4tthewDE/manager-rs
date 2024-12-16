@@ -2,10 +2,9 @@ use config::Config;
 use tonic::transport::Server;
 use tracing::info;
 
-mod compose;
 mod config;
 mod docker;
-mod system;
+mod service;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,9 +14,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting server at {:?}", config.address);
 
     Server::builder()
-        .add_service(docker::service())
-        .add_service(system::service())
-        .add_service(compose::service(config.clone()))
+        .add_service(service::docker())
+        .add_service(service::system())
+        .add_service(service::compose(config.clone()))
         .serve(config.address)
         .await?;
 
