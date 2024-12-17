@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chrono::DateTime;
 use chrono_humanize::HumanTime;
 
@@ -15,9 +14,9 @@ pub struct Container {
 }
 
 impl Container {
-    pub fn new(c: &proto::Container, logs: Vec<String>) -> Result<Self> {
-        let created = DateTime::from_timestamp(c.created, 0).unwrap();
-        Ok(Self {
+    pub fn new(c: &proto::Container, logs: Vec<String>) -> Self {
+        let created = DateTime::from_timestamp(c.created, 0).unwrap_or_default();
+        Self {
             id: c.id.clone(),
             name: c.names.join(", "),
             image: c.image.clone(),
@@ -25,7 +24,7 @@ impl Container {
             created: format!("{} ({:?})", HumanTime::from(created), created),
             ports: c.ports.iter().map(Port::from).collect(),
             logs,
-        })
+        }
     }
 }
 

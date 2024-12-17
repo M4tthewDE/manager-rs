@@ -2,7 +2,7 @@ use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use tracing::error;
 
 use crate::{client, App};
-use lib::state::docker::{
+use lib::state::info::docker::{
     container::{Container, Port},
     version::Version,
 };
@@ -12,9 +12,9 @@ impl App {
         puffin::profile_function!();
 
         ui.heading(RichText::new("Docker").color(Color32::WHITE));
-        version(ui, &self.state.docker_state.version);
+        version(ui, &self.state.info.docker_state.version);
         ScrollArea::vertical().id_source("docker").show(ui, |ui| {
-            for c in &self.state.docker_state.containers {
+            for c in &self.state.info.docker_state.containers {
                 self.container(ui, c);
             }
         });
