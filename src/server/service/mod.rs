@@ -16,8 +16,7 @@ pub fn docker() -> DockerServer<DockerService> {
 }
 
 pub fn system(config: Config) -> SystemServer<SystemService> {
-    let service = SystemService::new(config);
-    SystemServer::new(service)
+    SystemServer::new(SystemService::new(config))
 }
 
 pub fn compose(config: Config) -> ComposeServer<ComposeService> {

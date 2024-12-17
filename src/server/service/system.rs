@@ -24,9 +24,14 @@ impl SystemService {
     pub fn new(config: Config) -> Self {
         let info_reply = Arc::new(Mutex::new(InfoReply::default()));
         let update_interval = Duration::from_millis(config.update_interval);
-        info!("starting info updater with interval {:?}", update_interval);
-        let info = Arc::clone(&info_reply);
 
+        info!("starting info updater with interval {:?}", update_interval);
+        Self::start_updater(update_interval, Arc::clone(&info_reply));
+
+        Self { info_reply }
+    }
+
+    fn start_updater(update_interval: Duration, info: Arc<Mutex<InfoReply>>) {
         tokio::task::spawn(async move {
             loop {
                 tokio::time::sleep(update_interval).await;
@@ -39,8 +44,6 @@ impl SystemService {
                 }
             }
         });
-
-        Self { info_reply }
     }
 
     async fn info() -> Result<InfoReply> {
@@ -51,43 +54,56 @@ impl SystemService {
         std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
         sys.refresh_all();
 
-        let cpus = sys
-            .cpus()
-            .iter()
-            .map(|c| Cpu {
-                name: c.name().to_string(),
-                cpu_usage: c.cpu_usage(),
-                frequency: c.frequency(),
-            })
-            .collect();
-        let disks = Disks::new_with_refreshed_list()
-            .list()
-            .iter()
-            .map(|d| Disk {
-                name: d.name().to_str().unwrap_or_default().to_string(),
-                kind: d.kind().to_string(),
-                file_system: d.file_system().to_str().unwrap_or_default().to_string(),
-                total_space: d.total_space(),
-                available_space: d.available_space(),
-            })
-            .collect();
-
         Ok(InfoReply {
             name: sysinfo::System::name().unwrap_or_default(),
             kernel_version: sysinfo::System::kernel_version().unwrap_or_default(),
             os_version: sysinfo::System::os_version().unwrap_or_default(),
             host_name: sysinfo::System::host_name().unwrap_or_default(),
 
-            memory_info: Some(MemoryInfo {
-                total: sys.total_memory(),
-                free: sys.free_memory(),
-                available: sys.available_memory(),
-                used: sys.used_memory(),
-            }),
-            disk_info: Some(DiskInfo { disks }),
-            cpu_info: Some(CpuInfo { cpus }),
+            memory_info: Some(Self::memory_info(&mut sys)),
+            disk_info: Some(Self::disk_info()),
+            cpu_info: Some(Self::cpu_info(&mut sys)),
             docker_info: Some(docker_info().await?),
         })
+    }
+
+    fn memory_info(sys: &mut sysinfo::System) -> MemoryInfo {
+        MemoryInfo {
+            total: sys.total_memory(),
+            free: sys.free_memory(),
+            available: sys.available_memory(),
+            used: sys.used_memory(),
+        }
+    }
+
+    fn disk_info() -> DiskInfo {
+        DiskInfo {
+            disks: Disks::new_with_refreshed_list()
+                .list()
+                .iter()
+                .map(|d| Disk {
+                    name: d.name().to_str().unwrap_or_default().to_string(),
+                    kind: d.kind().to_string(),
+                    file_system: d.file_system().to_str().unwrap_or_default().to_string(),
+                    total_space: d.total_space(),
+                    available_space: d.available_space(),
+                })
+                .collect(),
+        }
+    }
+
+    fn cpu_info(sys: &mut sysinfo::System) -> CpuInfo {
+        CpuInfo {
+            cpus: sys
+                .cpus()
+                .iter()
+                .map(|c| Cpu {
+                    name: c.name().to_string(),
+                    cpu_usage: c.cpu_usage(),
+                    frequency: c.frequency(),
+                })
+                .collect(),
+        }
     }
 }
 
