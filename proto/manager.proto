@@ -3,9 +3,6 @@ package manager;
 
 message Empty {}
 
-service System {
-    rpc GetInfo (Empty) returns (InfoReply);
-}
 
 message MemoryInfo {
     uint64 total = 1;
@@ -26,21 +23,6 @@ message Disk {
     uint64 available_space = 5;
 }
 
-message InfoReply {
-    string name = 1;
-    string kernel_version = 2;
-    string os_version = 3;
-    string host_name = 4;
-
-    MemoryInfo memoryInfo = 5;
-    DiskInfo diskInfo = 6;
-    CpuInfo cpuInfo = 7;
-    DockerInfo dockerInfo = 8;
-}
-
-message CpuInfo {
-    repeated Cpu cpus = 1;
-}
 
 message Cpu {
     string name = 1;
@@ -48,26 +30,13 @@ message Cpu {
     uint64 frequency = 3;
 }
 
-message DockerInfo {
-    Version version = 1;
-    repeated Container containerList = 2;
+message CpuInfo {
+    repeated Cpu cpus = 1;
 }
 
 message Version {
     string version = 1;
     string apiVersion = 2;
-}
-
-service Docker {
-    rpc RemoveContainer (ContainerIdentifier) returns (Empty);
-    rpc StopContainer (ContainerIdentifier) returns (Empty);
-    rpc StartContainer (ContainerIdentifier) returns (Empty);
-    rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
-}
-
-
-message ContainerListReply {
-    repeated Container containerList = 1;
 }
 
 message Container {
@@ -87,17 +56,35 @@ message Port {
     string port_type = 3;
 }
 
+message DockerInfo {
+    Version version = 1;
+    repeated Container containerList = 2;
+}
+
+message InfoReply {
+    string name = 1;
+    string kernel_version = 2;
+    string os_version = 3;
+    string host_name = 4;
+
+    MemoryInfo memoryInfo = 5;
+    DiskInfo diskInfo = 6;
+    CpuInfo cpuInfo = 7;
+    DockerInfo dockerInfo = 8;
+}
+
+service System {
+    rpc GetInfo (Empty) returns (InfoReply);
+}
+
 message ContainerIdentifier {
     string id = 1;
 }
 
-message LogsReply {
-    repeated string lines = 1;
-}
-
-service Compose {
-    rpc Diff(DiffRequest) returns (DiffReply);
-    rpc Push(PushRequest) returns (Empty);
+service Docker {
+    rpc RemoveContainer (ContainerIdentifier) returns (Empty);
+    rpc StopContainer (ContainerIdentifier) returns (Empty);
+    rpc StartContainer (ContainerIdentifier) returns (Empty);
 }
 
 message DiffRequest {
@@ -129,4 +116,9 @@ message DiffReply {
 message PushRequest {
     ComposeFile file = 1;
     DiffResult diffResult = 2;
+}
+
+service Compose {
+    rpc Diff(DiffRequest) returns (DiffReply);
+    rpc Push(PushRequest) returns (Empty);
 }
