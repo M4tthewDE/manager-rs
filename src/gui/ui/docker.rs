@@ -12,9 +12,9 @@ impl App {
         puffin::profile_function!();
 
         ui.heading(RichText::new("Docker").color(Color32::WHITE));
-        version(ui, &self.state.info.docker_state.version);
+        version(ui, &self.state.info.docker_info.version);
         ScrollArea::vertical().id_source("docker").show(ui, |ui| {
-            for c in &self.state.info.docker_state.containers {
+            for c in &self.state.info.docker_info.containers {
                 self.container(ui, c);
             }
         });

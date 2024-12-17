@@ -22,7 +22,7 @@ impl Container {
             image: c.image.clone(),
             status: c.status.clone(),
             created: format!("{} ({:?})", HumanTime::from(created), created),
-            ports: c.ports.iter().map(Port::from).collect(),
+            ports: c.ports.iter().map(|p| Port::from(p.clone())).collect(),
             logs,
         }
     }
@@ -34,12 +34,12 @@ pub struct Port {
     pub port_type: String,
 }
 
-impl From<&proto::Port> for Port {
-    fn from(p: &proto::Port) -> Self {
+impl From<proto::Port> for Port {
+    fn from(p: proto::Port) -> Self {
         Self {
             private_port: p.private_port.to_string(),
             public_port: p.public_port.to_string(),
-            port_type: p.port_type.clone(),
+            port_type: p.port_type,
         }
     }
 }
