@@ -42,15 +42,4 @@ impl proto::docker_server::Docker for DockerService {
 
         Ok(Response::new(proto::Empty {}))
     }
-
-    async fn logs_container(
-        &self,
-        request: Request<proto::ContainerIdentifier>,
-    ) -> Result<Response<proto::LogsReply>, Status> {
-        let lines = container::logs(&request.get_ref().id)
-            .await
-            .map_err(|e| Status::from_error(e.into()))?;
-
-        Ok(Response::new(proto::LogsReply { lines }))
-    }
 }
