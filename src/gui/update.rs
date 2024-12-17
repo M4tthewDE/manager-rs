@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use futures::future::BoxFuture;
 use std::{
-    fs::DirEntry,
     sync::mpsc::Sender,
     time::{Duration, Instant},
 };
@@ -45,8 +44,17 @@ async fn update_info(server_address: String) -> Result<StateChangeMessage> {
 
 async fn update_compose(config: Config) -> Result<StateChangeMessage> {
     let mut files = Vec::new();
+
     for dir_entry in config.docker_compose_path.read_dir()? {
-        files.push(ComposeFile::new(dir_entry?)?);
+        let dir_entry = dir_entry?;
+        files.push(ComposeFile {
+            name: dir_entry
+                .file_name()
+                .to_str()
+                .context("invalid file name {p:?}")?
+                .to_string(),
+            content: std::fs::read_to_string(dir_entry.path())?,
+        });
     }
 
     let diffs = compose::diff_files(files, config.server_address).await?;
@@ -54,17 +62,4 @@ async fn update_compose(config: Config) -> Result<StateChangeMessage> {
     Ok(Box::new(move |state: &mut State| {
         state.compose_file_diffs = diffs;
     }))
-}
-
-impl ComposeFile {
-    pub fn new(dir_entry: DirEntry) -> Result<Self> {
-        Ok(Self {
-            name: dir_entry
-                .file_name()
-                .to_str()
-                .context("invalid file name {p:?}")?
-                .to_string(),
-            content: std::fs::read_to_string(dir_entry.path())?,
-        })
-    }
 }
