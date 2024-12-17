@@ -48,13 +48,6 @@ message Cpu {
     uint64 frequency = 3;
 }
 
-service Docker {
-    rpc RemoveContainer (ContainerIdentifier) returns (Empty);
-    rpc StopContainer (ContainerIdentifier) returns (Empty);
-    rpc StartContainer (ContainerIdentifier) returns (Empty);
-    rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
-}
-
 message DockerInfo {
     Version version = 1;
     repeated Container containerList = 2;
@@ -64,6 +57,14 @@ message Version {
     string version = 1;
     string apiVersion = 2;
 }
+
+service Docker {
+    rpc RemoveContainer (ContainerIdentifier) returns (Empty);
+    rpc StopContainer (ContainerIdentifier) returns (Empty);
+    rpc StartContainer (ContainerIdentifier) returns (Empty);
+    rpc LogsContainer (ContainerIdentifier) returns (LogsReply);
+}
+
 
 message ContainerListReply {
     repeated Container containerList = 1;

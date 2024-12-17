@@ -7,7 +7,7 @@ use std::{
 use tracing::warn;
 
 use crate::{
-    client::{compose, docker, info},
+    client::{compose, info},
     config::Config,
 };
 use lib::{proto::ComposeFile, state::State};
@@ -17,7 +17,6 @@ pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 pub async fn update(tx: Sender<StateChangeMessage>, config: Config) -> Result<()> {
     let start = Instant::now();
     let futures: Vec<BoxFuture<Result<StateChangeMessage>>> = vec![
-        Box::pin(update_docker(config.server_address.clone())),
         Box::pin(update_info(config.server_address.clone())),
         Box::pin(update_compose(config)),
     ];
@@ -32,16 +31,6 @@ pub async fn update(tx: Sender<StateChangeMessage>, config: Config) -> Result<()
     }
 
     Ok(())
-}
-
-async fn update_docker(server_address: String) -> Result<StateChangeMessage> {
-    let containers = docker::get_containers(server_address.clone()).await?;
-    let version = docker::get_version(server_address).await?;
-
-    Ok(Box::new(move |state: &mut State| {
-        state.docker_state.containers = containers;
-        state.docker_state.version = version;
-    }))
 }
 
 async fn update_info(server_address: String) -> Result<StateChangeMessage> {
