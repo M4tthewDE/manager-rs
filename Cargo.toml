@@ -11,10 +11,6 @@ path = "src/server/main.rs"
 name = "gui"
 path = "src/gui/main.rs"
 
-[lib]
-name = "lib"
-path = "src/lib/mod.rs"
-
 [dependencies]
 tonic = "*"
 prost = "0.13"

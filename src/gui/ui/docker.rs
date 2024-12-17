@@ -1,11 +1,11 @@
 use egui::{CollapsingHeader, Color32, RichText, ScrollArea, TextStyle, Ui};
 use tracing::error;
 
-use crate::{client, App};
-use lib::state::info::docker::{
+use crate::state::info::docker::{
     container::{Container, Port},
     version::Version,
 };
+use crate::{client, App};
 
 impl App {
     pub fn docker(&self, ui: &mut Ui) {

@@ -7,13 +7,17 @@ use tracing::error;
 use update::StateChangeMessage;
 
 use anyhow::Result;
-use lib::state::State;
 use tokio::runtime;
 
 mod client;
 mod config;
+mod state;
 mod ui;
 mod update;
+
+mod proto {
+    tonic::include_proto!("manager");
+}
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -45,7 +49,7 @@ struct App {
     config: Config,
     rt: runtime::Runtime,
 
-    state: State,
+    state: state::State,
     last_update: Instant,
 
     tx: Sender<StateChangeMessage>,
@@ -78,7 +82,7 @@ impl App {
             config: config.clone(),
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
             last_update: Instant::now() - Duration::from_millis(config.update_interval + 1000),
-            state: State::default(),
+            state: state::State::default(),
             tx,
             rx,
         })

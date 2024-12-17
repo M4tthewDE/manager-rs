@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use lib::proto::{
+use crate::proto::{
     system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply, MemoryInfo,
     Version,
 };
@@ -51,11 +51,25 @@ impl SystemService {
         std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
         sys.refresh_all();
 
-        let cpus = sys.cpus().iter().map(Cpu::from).collect();
+        let cpus = sys
+            .cpus()
+            .iter()
+            .map(|c| Cpu {
+                name: c.name().to_string(),
+                cpu_usage: c.cpu_usage(),
+                frequency: c.frequency(),
+            })
+            .collect();
         let disks = Disks::new_with_refreshed_list()
             .list()
             .iter()
-            .map(Disk::from)
+            .map(|d| Disk {
+                name: d.name().to_str().unwrap_or_default().to_string(),
+                kind: d.kind().to_string(),
+                file_system: d.file_system().to_str().unwrap_or_default().to_string(),
+                total_space: d.total_space(),
+                available_space: d.available_space(),
+            })
             .collect();
 
         Ok(InfoReply {
@@ -105,13 +119,13 @@ async fn docker_info() -> Result<DockerInfo, Status> {
         let logs = docker::container::logs(&c.id)
             .await
             .map_err(|e| Status::from_error(e.into()))?;
-        let container = lib::proto::Container {
+        let container = crate::proto::Container {
             id: c.id.clone(),
             names: c.names.clone(),
             image: c.image.clone(),
             command: c.command.clone(),
             created: c.created,
-            ports: c.ports.iter().map(lib::proto::Port::from).collect(),
+            ports: c.ports.iter().map(crate::proto::Port::from).collect(),
             status: c.status.clone(),
             logs,
         };

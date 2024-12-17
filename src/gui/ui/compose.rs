@@ -1,8 +1,8 @@
 use egui::{Color32, RichText, Ui};
 use tracing::error;
 
+use crate::state::compose::{ComposeFileDiff, DiffResult};
 use crate::{client, App};
-use lib::state::compose::{ComposeFileDiff, DiffResult};
 
 impl App {
     pub fn compose(&self, ui: &mut Ui) {

@@ -1,6 +1,6 @@
 use egui::{Color32, RichText, Ui};
 
-use lib::state::info::{cpu::Cpu, disk::Disk, memory::Memory, Info};
+use crate::state::info::{cpu::Cpu, disk::Disk, memory::Memory, Info};
 
 pub fn info(ui: &mut Ui, info: &Info) {
     puffin::profile_function!();

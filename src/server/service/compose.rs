@@ -4,7 +4,7 @@ use anyhow::Context;
 use tonic::{Request, Response, Status};
 
 use crate::config::Config;
-use lib::proto::{
+use crate::proto::{
     compose_server::Compose, ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult,
     Empty, PushRequest,
 };

@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use futures::future::BoxFuture;
 use std::{
+    fs::DirEntry,
     sync::mpsc::Sender,
     time::{Duration, Instant},
 };
@@ -9,8 +10,9 @@ use tracing::warn;
 use crate::{
     client::{compose, info},
     config::Config,
+    proto::ComposeFile,
+    state::State,
 };
-use lib::{proto::ComposeFile, state::State};
 
 pub type StateChangeMessage = Box<dyn FnOnce(&mut State) + Send + Sync>;
 
@@ -52,4 +54,17 @@ async fn update_compose(config: Config) -> Result<StateChangeMessage> {
     Ok(Box::new(move |state: &mut State| {
         state.compose_file_diffs = diffs;
     }))
+}
+
+impl ComposeFile {
+    pub fn new(dir_entry: DirEntry) -> Result<Self> {
+        Ok(Self {
+            name: dir_entry
+                .file_name()
+                .to_str()
+                .context("invalid file name {p:?}")?
+                .to_string(),
+            content: std::fs::read_to_string(dir_entry.path())?,
+        })
+    }
 }

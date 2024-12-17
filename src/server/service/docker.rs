@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tonic::{Request, Response, Status};
 
-use lib::proto;
+use crate::proto;
 
 use crate::docker::container;
 

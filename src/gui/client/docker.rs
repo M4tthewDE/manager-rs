@@ -1,4 +1,4 @@
-use lib::proto::{docker_client::DockerClient, ContainerIdentifier};
+use crate::proto::{docker_client::DockerClient, ContainerIdentifier};
 
 use anyhow::Result;
 

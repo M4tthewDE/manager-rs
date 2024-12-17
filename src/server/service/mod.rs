@@ -1,8 +1,8 @@
-use compose::ComposeService;
-use docker::DockerService;
-use lib::proto::{
+use crate::proto::{
     compose_server::ComposeServer, docker_server::DockerServer, system_server::SystemServer,
 };
+use compose::ComposeService;
+use docker::DockerService;
 use system::SystemService;
 
 use crate::config::Config;
