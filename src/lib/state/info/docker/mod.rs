@@ -5,7 +5,7 @@ pub mod container;
 pub mod version;
 
 #[derive(Default)]
-pub struct DockerState {
+pub struct DockerInfo {
     pub containers: Vec<Container>,
     pub version: Version,
 }

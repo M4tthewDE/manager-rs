@@ -1,6 +1,6 @@
 use cpu::Cpu;
 use disk::Disk;
-use docker::{container::Container, version::Version, DockerState};
+use docker::{container::Container, version::Version, DockerInfo};
 use memory::Memory;
 
 use crate::proto::InfoReply;
@@ -20,7 +20,7 @@ pub struct Info {
     pub memory: Memory,
     pub disks: Vec<Disk>,
     pub cpus: Vec<Cpu>,
-    pub docker_state: DockerState,
+    pub docker_info: DockerInfo,
 }
 
 impl From<&InfoReply> for Info {
@@ -36,7 +36,7 @@ impl From<&InfoReply> for Info {
             .clone()
             .map(|cpu_info| cpu_info.cpus.iter().map(Cpu::from).collect())
             .unwrap_or_default();
-        let docker_state = DockerState {
+        let docker_state = DockerInfo {
             containers: i
                 .docker_info
                 .clone()
@@ -62,7 +62,7 @@ impl From<&InfoReply> for Info {
             memory,
             disks,
             cpus,
-            docker_state,
+            docker_info: docker_state,
         }
     }
 }
