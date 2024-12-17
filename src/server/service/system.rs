@@ -13,7 +13,7 @@ use tonic::{Request, Response, Status};
 use anyhow::Result;
 use tracing::{error, info};
 
-use crate::docker;
+use crate::{config::Config, docker};
 
 #[derive(Debug, Default)]
 pub struct SystemService {
@@ -21,14 +21,15 @@ pub struct SystemService {
 }
 
 impl SystemService {
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         let info_reply = Arc::new(Mutex::new(InfoReply::default()));
-        info!("starting info updater");
+        let update_interval = Duration::from_millis(config.update_interval);
+        info!("starting info updater with interval {:?}", update_interval);
         let info = Arc::clone(&info_reply);
 
         tokio::task::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                tokio::time::sleep(update_interval).await;
                 match Self::info().await {
                     Ok(i) => match info.lock() {
                         Ok(mut info) => *info = i,

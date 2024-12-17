@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Server::builder()
         .add_service(service::docker())
-        .add_service(service::system())
+        .add_service(service::system(config.clone()))
         .add_service(service::compose(config.clone()))
         .serve(config.address)
         .await?;
