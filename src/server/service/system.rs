@@ -29,12 +29,11 @@ impl SystemService {
         tokio::task::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(5)).await;
-                info!("updating");
                 match Self::info().await {
-                    Ok(i) => {
-                        let mut info = info.lock().unwrap();
-                        *info = i;
-                    }
+                    Ok(i) => match info.lock() {
+                        Ok(mut info) => *info = i,
+                        Err(err) => error!("{err:?}"),
+                    },
                     Err(err) => error!("update error {err:?}"),
                 }
             }
