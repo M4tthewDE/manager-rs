@@ -18,7 +18,7 @@ use lib::proto;
 use super::DOCKER_SOCK;
 
 #[derive(Deserialize, Debug)]
-struct Port {
+pub struct Port {
     #[serde(rename = "PrivatePort")]
     private_port: i64,
 
@@ -42,39 +42,25 @@ impl From<&Port> for proto::Port {
 #[derive(Deserialize, Debug)]
 pub struct Container {
     #[serde(rename = "Id")]
-    id: String,
+    pub id: String,
 
     #[serde(rename = "Names")]
-    names: Vec<String>,
+    pub names: Vec<String>,
 
     #[serde(rename = "Image")]
-    image: String,
+    pub image: String,
 
     #[serde(rename = "Command")]
-    command: String,
+    pub command: String,
 
     #[serde(rename = "Created")]
-    created: i64,
+    pub created: i64,
 
     #[serde(rename = "Ports")]
-    ports: Vec<Port>,
+    pub ports: Vec<Port>,
 
     #[serde(rename = "Status")]
-    status: String,
-}
-
-impl From<&Container> for proto::Container {
-    fn from(c: &Container) -> Self {
-        Self {
-            id: c.id.clone(),
-            names: c.names.clone(),
-            image: c.image.clone(),
-            command: c.command.clone(),
-            created: c.created,
-            ports: c.ports.iter().map(proto::Port::from).collect(),
-            status: c.status.clone(),
-        }
-    }
+    pub status: String,
 }
 
 pub async fn list() -> Result<Vec<Container>> {

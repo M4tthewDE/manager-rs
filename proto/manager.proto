@@ -78,6 +78,7 @@ message Container {
     repeated Port ports = 5;
     string status = 6;
     string id = 7;
+    repeated string logs = 8;
 }
 
 message Port {
