@@ -1,6 +1,6 @@
 use lib::proto::{
-    system_server::System, Container, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
-    MemoryInfo, Version,
+    system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply, MemoryInfo,
+    Version,
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
@@ -53,12 +53,28 @@ async fn docker_info() -> Result<DockerInfo, Status> {
         .await
         .map_err(|e| Status::from_error(e.into()))?
         .into();
-    let container_list: Vec<Container> = docker::container::list()
+
+    let containers = docker::container::list()
         .await
-        .map_err(|e| Status::from_error(e.into()))?
-        .iter()
-        .map(|c| c.into())
-        .collect();
+        .map_err(|e| Status::from_error(e.into()))?;
+
+    let mut container_list = Vec::new();
+    for c in containers {
+        let logs = docker::container::logs(&c.id)
+            .await
+            .map_err(|e| Status::from_error(e.into()))?;
+        let container = lib::proto::Container {
+            id: c.id.clone(),
+            names: c.names.clone(),
+            image: c.image.clone(),
+            command: c.command.clone(),
+            created: c.created,
+            ports: c.ports.iter().map(lib::proto::Port::from).collect(),
+            status: c.status.clone(),
+            logs,
+        };
+        container_list.push(container);
+    }
 
     Ok(DockerInfo {
         version: Some(version),

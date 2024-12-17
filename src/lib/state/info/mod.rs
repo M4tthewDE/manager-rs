@@ -43,7 +43,7 @@ impl From<&InfoReply> for Info {
                 .unwrap_or_default()
                 .container_list
                 .iter()
-                .map(|c| Container::new(c, vec![]))
+                .map(|c| Container::new(c, c.logs.clone()))
                 .collect(),
             version: Version::from(
                 &i.docker_info
