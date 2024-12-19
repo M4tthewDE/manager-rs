@@ -1,15 +1,8 @@
-use std::sync::mpsc::Sender;
-
-use anyhow::{Context, Result};
 use egui::{Color32, RichText, Ui};
 use tracing::error;
 
-use crate::config::Config;
-use crate::proto::ComposeFile;
 use crate::state::compose::{ComposeFileDiff, DiffResult};
-use crate::state::State;
-use crate::update::StateChangeMessage;
-use crate::{client, App};
+use crate::{client, update, App};
 
 impl App {
     pub fn compose(&self, ui: &mut Ui) {
@@ -21,7 +14,7 @@ impl App {
                 let config = self.config.clone();
                 let tx = self.tx.clone();
                 self.rt.spawn(async move {
-                    if let Err(err) = update_compose_diffs(config, tx).await {
+                    if let Err(err) = update::update_compose_diffs(config, tx).await {
                         error!("Update compose diff error: {err:?}");
                     }
                 });
@@ -64,35 +57,18 @@ impl App {
     }
 
     fn push(&self, diff: &ComposeFileDiff) {
-        let server_address = self.config.clone().server_address;
+        let config = self.config.clone();
         let d = diff.clone();
+        let tx = self.tx.clone();
 
         self.rt.spawn(async move {
-            if let Err(err) = client::compose::push_file(server_address, d).await {
+            if let Err(err) = client::compose::push_file(config.server_address.clone(), d).await {
                 error!("{err:?}");
+            }
+
+            if let Err(err) = update::update_compose_diffs(config, tx).await {
+                error!("Update compose diff error: {err:?}");
             }
         });
     }
-}
-
-async fn update_compose_diffs(config: Config, tx: Sender<StateChangeMessage>) -> Result<()> {
-    let mut files = Vec::new();
-
-    for dir_entry in config.docker_compose_path.read_dir()? {
-        let dir_entry = dir_entry?;
-        files.push(ComposeFile {
-            name: dir_entry
-                .file_name()
-                .to_str()
-                .context("invalid file name {p:?}")?
-                .to_string(),
-            content: std::fs::read_to_string(dir_entry.path())?,
-        });
-    }
-
-    let diffs = crate::client::compose::diff_files(files, config.server_address).await?;
-
-    Ok(tx.send(Box::new(move |state: &mut State| {
-        state.compose_file_diffs = diffs;
-    }))?)
 }
