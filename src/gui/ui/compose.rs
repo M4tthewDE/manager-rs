@@ -38,7 +38,7 @@ impl App {
         puffin::profile_function!();
 
         ui.horizontal(|ui| {
-            ui.label(&diff.name);
+            ui.label(format!("{:?}", &diff.path));
             match diff.result {
                 DiffResult::New => ui.label(RichText::new("New").color(Color32::GREEN)),
                 DiffResult::Same => ui.label(RichText::new("Unchanged").color(Color32::GRAY)),

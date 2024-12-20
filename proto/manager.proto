@@ -92,7 +92,7 @@ message DiffRequest {
 }
 
 message ComposeFile {
-    string name = 1;
+    string path = 1;
     string content = 2;
 }
 
@@ -104,7 +104,7 @@ enum DiffResult {
 }
 
 message ComposeFileDiff {
-    string name = 1;
+    string path = 1;
     DiffResult result = 2;
     string content = 3;
 }

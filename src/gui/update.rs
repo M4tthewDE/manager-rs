@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use std::{
+    path::{Path, PathBuf},
     sync::mpsc::Sender,
     time::{Duration, Instant},
 };
@@ -34,21 +35,37 @@ async fn update_info(server_address: String) -> Result<StateChangeMessage> {
 pub async fn update_compose_diffs(config: Config, tx: Sender<StateChangeMessage>) -> Result<()> {
     let mut files = Vec::new();
 
-    for dir_entry in config.docker_compose_path.read_dir()? {
-        let dir_entry = dir_entry?;
-        files.push(ComposeFile {
-            name: dir_entry
-                .file_name()
-                .to_str()
-                .context("invalid file name {p:?}")?
-                .to_string(),
-            content: std::fs::read_to_string(dir_entry.path())?,
-        });
-    }
-
+    gather_files(
+        &config.docker_compose_path,
+        &config.docker_compose_path,
+        &mut files,
+    )?;
     let diffs = crate::client::compose::diff_files(files, config.server_address).await?;
 
     Ok(tx.send(Box::new(move |state: &mut State| {
         state.compose_file_diffs = diffs;
     }))?)
+}
+
+fn gather_files(root_path: &PathBuf, path: &Path, files: &mut Vec<ComposeFile>) -> Result<()> {
+    for dir_entry in path.read_dir()? {
+        let dir_entry = dir_entry?;
+        if dir_entry.path().is_dir() {
+            gather_files(root_path, &dir_entry.path(), files)?;
+            continue;
+        }
+
+        files.push(ComposeFile {
+            path: dir_entry
+                .path()
+                .strip_prefix(root_path)?
+                .to_path_buf()
+                .to_str()
+                .context("invalid  path {p:?}")?
+                .to_string(),
+            content: std::fs::read_to_string(dir_entry.path())?,
+        });
+    }
+
+    Ok(())
 }

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::state::compose::ComposeFileDiff;
 
@@ -25,7 +25,12 @@ pub async fn push_file(server_address: String, file_diff: ComposeFileDiff) -> Re
     let mut client = ComposeClient::connect(server_address).await?;
     let request = tonic::Request::new(PushRequest {
         file: Some(proto::ComposeFile {
-            name: file_diff.name.clone(),
+            path: file_diff
+                .path
+                .clone()
+                .to_str()
+                .context("invalid path {file_diff:?}")?
+                .to_string(),
             content: file_diff.content,
         }),
         diff_result: proto::DiffResult::from(file_diff.result).into(),

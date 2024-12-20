@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::proto;
 
 #[derive(Debug, Clone)]
@@ -33,7 +35,7 @@ impl From<DiffResult> for proto::DiffResult {
 
 #[derive(Debug, Clone)]
 pub struct ComposeFileDiff {
-    pub name: String,
+    pub path: PathBuf,
     pub result: DiffResult,
     pub content: String,
 }
@@ -41,7 +43,7 @@ pub struct ComposeFileDiff {
 impl From<&proto::ComposeFileDiff> for ComposeFileDiff {
     fn from(diff: &proto::ComposeFileDiff) -> Self {
         Self {
-            name: diff.clone().name,
+            path: PathBuf::from(diff.clone().path),
             result: diff.result.into(),
             content: diff.clone().content,
         }
