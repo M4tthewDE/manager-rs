@@ -1,4 +1,4 @@
-use egui::{CentralPanel, Color32, Context, RichText};
+use egui::{CentralPanel, Color32, Context, RichText, ScrollArea};
 
 use crate::App;
 
@@ -11,16 +11,18 @@ impl App {
         puffin::profile_function!();
         CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
-                ui.heading(RichText::new("Server manager").color(Color32::WHITE));
-                ui.add_space(10.0);
+                ScrollArea::vertical().id_source("ui").show(ui, |ui| {
+                    ui.heading(RichText::new("Server manager").color(Color32::WHITE));
+                    ui.add_space(10.0);
 
-                info::info(ui, &self.state.info);
-                ui.add_space(10.0);
+                    info::info(ui, &self.state.info);
+                    ui.add_space(10.0);
 
-                self.docker(ui);
-                ui.add_space(10.0);
+                    self.docker(ui);
+                    ui.add_space(10.0);
 
-                self.compose(ui);
+                    self.compose(ui);
+                });
             });
         });
     }
