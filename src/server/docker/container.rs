@@ -138,7 +138,7 @@ pub async fn logs(id: &str) -> Result<Vec<String>> {
     let url = Uri::new(
         DOCKER_SOCK,
         &format!(
-            "/v1.47/containers/{}/logs?stdout=true&timestamps=true&tail=1000",
+            "/v1.47/containers/{}/logs?stderr=true&stdout=true&timestamps=true&tail=1000",
             id
         ),
     );
