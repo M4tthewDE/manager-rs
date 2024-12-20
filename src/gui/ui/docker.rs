@@ -45,9 +45,12 @@ impl App {
                     ui.label(RichText::new("Created").color(Color32::WHITE));
                     ui.label(&container.created);
                 });
-                ui.horizontal(|ui| {
-                    ports(ui, &container.ports);
-                });
+
+                if !container.ports.is_empty() {
+                    ui.horizontal(|ui| {
+                        ports(ui, &container.ports);
+                    });
+                }
             });
 
             logs(ui, container);
