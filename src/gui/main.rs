@@ -1,8 +1,10 @@
 use crate::config::Config;
+use state::{log::LogLine, State};
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
 };
+use tokio_stream::StreamExt;
 use tracing::error;
 use update::StateChangeMessage;
 
@@ -28,6 +30,9 @@ fn main() -> Result<()> {
         puffin::set_scopes_on(true);
     }
 
+    let (tx, rx) = mpsc::channel();
+    log_stream(config.server_address.clone(), tx.clone());
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
@@ -36,13 +41,36 @@ fn main() -> Result<()> {
     match eframe::run_native(
         "Server manager",
         options,
-        Box::new(|_cc| Ok(Box::new(App::new(config)?))),
+        Box::new(|_cc| Ok(Box::new(App::new(config, tx, rx)?))),
     ) {
         Ok(_) => {}
         Err(err) => error!("{err:?}"),
     };
 
     Ok(())
+}
+
+fn log_stream(server_address: String, tx: Sender<StateChangeMessage>) {
+    let tx = tx.clone();
+    std::thread::spawn(move || {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let mut stream = client::info::stream_logs(server_address).await.unwrap();
+                while let Some(log_reply) = stream.next().await {
+                    let log_reply = log_reply.unwrap();
+                    tx.send(Box::new(move |state: &mut State| {
+                        state.server_log.push(LogLine {
+                            level: log_reply.level.into(),
+                            text: log_reply.text,
+                        })
+                    }))
+                    .unwrap();
+                }
+            })
+    });
 }
 
 struct App {
@@ -75,9 +103,11 @@ impl eframe::App for App {
 }
 
 impl App {
-    fn new(config: Config) -> Result<Self> {
-        let (tx, rx) = mpsc::channel();
-
+    fn new(
+        config: Config,
+        tx: Sender<StateChangeMessage>,
+        rx: Receiver<StateChangeMessage>,
+    ) -> Result<Self> {
         Ok(Self {
             config: config.clone(),
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,

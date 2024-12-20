@@ -3,7 +3,6 @@ package manager;
 
 message Empty {}
 
-
 message MemoryInfo {
     uint64 total = 1;
     uint64 free = 2;
@@ -73,8 +72,22 @@ message InfoReply {
     DockerInfo dockerInfo = 8;
 }
 
+enum LogLevel {
+    Trace = 0;
+    Debug = 1;
+    Info = 2;
+    Warn = 3;
+    Error = 4;
+}
+
+message LogReply {
+    LogLevel level = 1; 
+    string text = 2;
+}
+
 service System {
     rpc GetInfo (Empty) returns (InfoReply);
+    rpc Log (Empty) returns (stream LogReply);
 }
 
 message ContainerIdentifier {

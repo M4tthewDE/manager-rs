@@ -1,11 +1,16 @@
 use std::{
+    pin::Pin,
     sync::{Arc, Mutex},
     time::Duration,
 };
+use tokio_stream::{wrappers::ReceiverStream, Stream};
 
-use crate::proto::{
-    system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply, MemoryInfo,
-    Version,
+use crate::{
+    proto::{
+        system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
+        LogReply, MemoryInfo, Version,
+    },
+    subscriber::LogRelay,
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
@@ -15,20 +20,23 @@ use tracing::{error, info};
 
 use crate::{config::Config, docker};
 
-#[derive(Debug, Default)]
 pub struct SystemService {
     info_reply: Arc<Mutex<InfoReply>>,
+    log_relay: Arc<Mutex<LogRelay>>,
 }
 
 impl SystemService {
-    pub fn new(config: Config) -> Self {
+    pub fn new(config: Config, log_relay: Arc<Mutex<LogRelay>>) -> Self {
         let info_reply = Arc::new(Mutex::new(InfoReply::default()));
         let update_interval = Duration::from_millis(config.update_interval);
 
         info!("starting info updater with interval {:?}", update_interval);
         Self::start_updater(update_interval, Arc::clone(&info_reply));
 
-        Self { info_reply }
+        Self {
+            info_reply,
+            log_relay,
+        }
     }
 
     fn start_updater(update_interval: Duration, info: Arc<Mutex<InfoReply>>) {
@@ -117,6 +125,27 @@ impl System for SystemService {
                 Err(Status::from_error("Lock is poisoned".into()))
             }
         };
+    }
+
+    type LogStream = Pin<Box<dyn Stream<Item = Result<LogReply, Status>> + Send>>;
+
+    async fn log(
+        &self,
+        _: tonic::Request<Empty>,
+    ) -> std::result::Result<tonic::Response<Self::LogStream>, tonic::Status> {
+        let (tx, rx) = tokio::sync::mpsc::channel(128);
+
+        match self.log_relay.lock() {
+            Ok(mut log_relay) => {
+                log_relay.add_sender(tx.clone());
+            }
+            Err(err) => {
+                error!("{err:?}");
+            }
+        }
+
+        let output_stream = ReceiverStream::new(rx);
+        Ok(Response::new(Box::pin(output_stream) as Self::LogStream))
     }
 }
 

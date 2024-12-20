@@ -22,6 +22,35 @@ impl App {
                     ui.add_space(10.0);
 
                     self.compose(ui);
+                    ui.add_space(10.0);
+
+                    ui.heading(RichText::new("Server logs").color(Color32::WHITE));
+                    ui.group(|ui| {
+                        for line in &self.state.server_log.logs {
+                            let level_text = match line.level {
+                                crate::state::log::LogLevel::Trace => {
+                                    RichText::new("Trace").color(Color32::WHITE)
+                                }
+                                crate::state::log::LogLevel::Debug => {
+                                    RichText::new("Debug").color(Color32::BLUE)
+                                }
+                                crate::state::log::LogLevel::Info => {
+                                    RichText::new("Info").color(Color32::GREEN)
+                                }
+                                crate::state::log::LogLevel::Warn => {
+                                    RichText::new("Warn").color(Color32::YELLOW)
+                                }
+                                crate::state::log::LogLevel::Error => {
+                                    RichText::new("Error").color(Color32::RED)
+                                }
+                            };
+
+                            ui.horizontal(|ui| {
+                                ui.label(level_text);
+                                ui.label(&line.text);
+                            });
+                        }
+                    })
                 });
             });
         });
