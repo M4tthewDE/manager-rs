@@ -156,8 +156,8 @@ impl ComposeService {
         let service_def: ServiceDefinition = toml::from_str(&std::fs::read_to_string(path)?)?;
         info!("Deploying service");
 
-        info!("Pulling image {}", service_def.image);
-        docker::image::pull(&service_def.image).await?;
+        info!("Pulling image {}:{}", service_def.image, service_def.tag);
+        docker::image::pull(&service_def.image, &service_def.tag).await?;
 
         let mut port_bindings = HashMap::new();
 
@@ -199,8 +199,9 @@ struct PortMapping {
 #[derive(Deserialize, Clone, Debug)]
 struct ServiceDefinition {
     image: String,
+    tag: String,
     container_name: String,
     command: Option<String>,
-    binds: Vec<String>,
+    binds: Option<Vec<String>>,
     ports: Vec<PortMapping>,
 }

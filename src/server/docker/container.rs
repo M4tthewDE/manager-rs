@@ -181,7 +181,7 @@ pub struct HostConfig {
     pub port_bindings: HashMap<String, Vec<PortBinding>>,
 
     #[serde(rename = "Binds")]
-    pub binds: Vec<String>,
+    pub binds: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Debug)]
