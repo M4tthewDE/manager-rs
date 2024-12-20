@@ -1,3 +1,5 @@
+use serde::Serialize;
+use std::collections::HashMap;
 use std::io::BufRead;
 use tracing::debug;
 
@@ -162,4 +164,68 @@ pub async fn logs(id: &str) -> Result<Vec<String>> {
     }
 
     Ok(lines)
+}
+
+#[derive(Serialize, Debug)]
+pub struct PortBinding {
+    #[serde(rename = "HostIp")]
+    pub host_ip: String,
+
+    #[serde(rename = "HostPort")]
+    pub host_port: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct HostConfig {
+    #[serde(rename = "PortBindings")]
+    pub port_bindings: HashMap<String, Vec<PortBinding>>,
+
+    #[serde(rename = "Binds")]
+    pub binds: Vec<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct ContainerCreationBody {
+    #[serde(rename = "Image")]
+    pub image: String,
+
+    #[serde(rename = "Cmd")]
+    pub command: Option<String>,
+
+    #[serde(rename = "HostConfig")]
+    pub host_config: HostConfig,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ContainerCreationResponse {
+    #[serde(rename = "Id")]
+    pub id: String,
+}
+
+pub async fn create(name: &str, body: ContainerCreationBody) -> Result<String> {
+    let url = Uri::new(
+        DOCKER_SOCK,
+        &format!("/v1.47/containers/create?name={}", name),
+    );
+
+    let req = hyper::Request::builder()
+        .uri(url)
+        .method("POST")
+        .header("Content-Type", "application/json")
+        .body(Full::from(serde_json::to_string(&body)?))?;
+
+    let client: Client<UnixConnector, Full<Bytes>> = Client::unix();
+    let res = client.request(req).await?;
+    if res.status() != 201 {
+        let status = res.status();
+        let body = res.collect().await?.aggregate();
+        let error: Error = serde_json::from_reader(body.reader())?;
+        bail!("status: {status}, {error:?}")
+    }
+
+    let body = res.collect().await?.aggregate();
+    let container_creation_response: ContainerCreationResponse =
+        serde_json::from_reader(body.reader())?;
+
+    Ok(container_creation_response.id)
 }

@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use anyhow::{Context, Result};
 
+use crate::proto::DeployRequest;
 use crate::state::compose::ComposeFileDiff;
 
 use crate::proto::{self, compose_client::ComposeClient, ComposeFile, DiffRequest, PushRequest};
@@ -37,5 +40,15 @@ pub async fn push_file(server_address: String, file_diff: ComposeFileDiff) -> Re
     });
 
     client.push(request).await?;
+    Ok(())
+}
+
+pub async fn deploy(server_address: String, path: PathBuf) -> Result<()> {
+    let mut client = ComposeClient::connect(server_address).await?;
+    let request = tonic::Request::new(DeployRequest {
+        path: path.to_str().context("invalid path {path:?}")?.to_string(),
+    });
+
+    client.deploy(request).await?;
     Ok(())
 }

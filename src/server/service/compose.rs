@@ -1,10 +1,15 @@
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow::Context;
 use tonic::{Request, Response, Status};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::config::Config;
+use crate::docker;
+use crate::docker::container::{ContainerCreationBody, HostConfig, PortBinding};
+use crate::proto::DeployRequest;
 use crate::proto::{
     compose_server::Compose, ComposeFile, ComposeFileDiff, DiffReply, DiffRequest, DiffResult,
     Empty, PushRequest,
@@ -38,6 +43,16 @@ impl Compose for ComposeService {
             Ok(_) => Ok(Response::new(Empty {})),
             Err(err) => {
                 error!("push error: {err:?}");
+                Err(Status::from_error(err.into()))
+            }
+        }
+    }
+
+    async fn deploy(&self, req: Request<DeployRequest>) -> Result<Response<Empty>, Status> {
+        match self.handle_deploy(req.get_ref()).await {
+            Ok(_) => Ok(Response::new(Empty {})),
+            Err(err) => {
+                error!("deploy error: {err:?}");
                 Err(Status::from_error(err.into()))
             }
         }
@@ -133,4 +148,59 @@ impl ComposeService {
 
         Ok(())
     }
+
+    async fn handle_deploy(&self, req: &DeployRequest) -> anyhow::Result<()> {
+        let mut path = self.docker_compose_path.clone();
+        path.push(req.path.clone());
+
+        let service_def: ServiceDefinition = toml::from_str(&std::fs::read_to_string(path)?)?;
+        info!("Deploying service");
+
+        info!("Pulling image {}", service_def.image);
+        docker::image::pull(&service_def.image).await?;
+
+        let mut port_bindings = HashMap::new();
+
+        for port in service_def.ports {
+            port_bindings.insert(
+                format!("{}/{}", port.container_port, port.protocol),
+                vec![PortBinding {
+                    host_ip: port.host_ip,
+                    host_port: port.host_port,
+                }],
+            );
+        }
+
+        let body = ContainerCreationBody {
+            image: service_def.image,
+            command: service_def.command,
+            host_config: HostConfig {
+                port_bindings,
+                binds: service_def.binds,
+            },
+        };
+
+        info!("Creating container {}", service_def.container_name);
+        let id = docker::container::create(&service_def.container_name, body).await?;
+
+        info!("Starting container {}", id);
+        docker::container::start(&id).await
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct PortMapping {
+    protocol: String,
+    host_ip: String,
+    host_port: String,
+    container_port: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct ServiceDefinition {
+    image: String,
+    container_name: String,
+    command: Option<String>,
+    binds: Vec<String>,
+    ports: Vec<PortMapping>,
 }

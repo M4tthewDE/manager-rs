@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use egui::{Color32, RichText, Ui};
 use tracing::error;
 
@@ -47,6 +49,9 @@ impl App {
             };
 
             if matches!(diff.result, DiffResult::Same) {
+                if ui.button("Deploy").clicked() {
+                    self.deploy(diff.path.clone());
+                }
                 return;
             }
 
@@ -68,6 +73,16 @@ impl App {
 
             if let Err(err) = update::update_compose_diffs(config, tx).await {
                 error!("Update compose diff error: {err:?}");
+            }
+        });
+    }
+
+    fn deploy(&self, path: PathBuf) {
+        let config = self.config.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) = client::compose::deploy(config.server_address.clone(), path).await {
+                error!("{err:?}");
             }
         });
     }

@@ -118,7 +118,12 @@ message PushRequest {
     DiffResult diffResult = 2;
 }
 
+message DeployRequest {
+    string path = 1;
+}
+
 service Compose {
     rpc Diff(DiffRequest) returns (DiffReply);
     rpc Push(PushRequest) returns (Empty);
+    rpc Deploy(DeployRequest) returns (Empty);
 }
