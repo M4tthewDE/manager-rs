@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+};
 
 use tokio::{runtime::Handle, sync::mpsc::Sender};
 use tonic::Status;
@@ -43,12 +46,12 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
 }
 
 fn convert_level(level: &tracing::Level) -> LogLevel {
-    match level {
-        &tracing::Level::TRACE => LogLevel::Info,
-        &tracing::Level::DEBUG => LogLevel::Debug,
-        &tracing::Level::INFO => LogLevel::Info,
-        &tracing::Level::WARN => LogLevel::Warn,
-        &tracing::Level::ERROR => LogLevel::Error,
+    match *level {
+        tracing::Level::TRACE => LogLevel::Info,
+        tracing::Level::DEBUG => LogLevel::Debug,
+        tracing::Level::INFO => LogLevel::Info,
+        tracing::Level::WARN => LogLevel::Warn,
+        tracing::Level::ERROR => LogLevel::Error,
     }
 }
 
@@ -64,13 +67,22 @@ impl LogSender {
     }
 }
 
+const MAX_CACHE_SIZE: usize = 1_000;
+
 #[derive(Default)]
 pub struct LogRelay {
+    cache: VecDeque<Result<LogReply, Status>>,
     senders: Vec<LogSender>,
 }
 
 impl LogRelay {
     fn relay(&mut self, reply: Result<LogReply, Status>) {
+        if self.cache.len() == MAX_CACHE_SIZE {
+            self.cache.pop_front();
+        }
+
+        self.cache.push_back(reply.clone());
+
         let reply = reply.clone();
         let senders = self.senders.clone();
 
@@ -87,7 +99,24 @@ impl LogRelay {
     }
 
     pub fn add_sender(&mut self, id: Uuid, sender: Sender<Result<LogReply, Status>>) {
+        let cache = self.cache.clone();
         let sender = LogSender { id, sender };
+
+        let s = sender.clone();
+        Handle::current().spawn(async move {
+            for reply in &cache {
+                match s.send(reply.clone()).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        error!(
+                            "Log relay cache send error '{err:?}' to sender {:?}",
+                            sender.id
+                        );
+                    }
+                }
+            }
+        });
+
         self.senders.push(sender);
     }
 
