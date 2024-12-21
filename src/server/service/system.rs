@@ -11,7 +11,7 @@ use crate::{
         system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
         LogReply, MemoryInfo, Version,
     },
-    subscriber::LogRelay,
+    subscriber::{LogRelay, LogSender},
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
@@ -31,7 +31,7 @@ impl SystemService {
         let info_reply = Arc::new(Mutex::new(InfoReply::default()));
         let update_interval = Duration::from_millis(config.update_interval);
 
-        info!("starting info updater with interval {:?}", update_interval);
+        info!("Starting info updater with interval {:?}", update_interval);
         Self::start_updater(update_interval, Arc::clone(&info_reply));
 
         Self {
@@ -141,7 +141,7 @@ impl System for SystemService {
         info!("Adding sender {id}");
         match self.log_relay.lock() {
             Ok(mut log_relay) => {
-                log_relay.add_sender(id, t);
+                log_relay.add_sender(LogSender::new(id, t));
             }
             Err(err) => {
                 eprintln!("{err:?}");

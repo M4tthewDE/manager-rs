@@ -62,6 +62,10 @@ pub struct LogSender {
 }
 
 impl LogSender {
+    pub fn new(id: Uuid, sender: Sender<Result<LogReply, Status>>) -> Self {
+        Self { id, sender }
+    }
+
     async fn send(&self, reply: Result<LogReply, Status>) -> anyhow::Result<()> {
         Ok(self.sender.send(reply).await?)
     }
@@ -98,14 +102,16 @@ impl LogRelay {
         });
     }
 
-    pub fn add_sender(&mut self, id: Uuid, sender: Sender<Result<LogReply, Status>>) {
-        let cache = self.cache.clone();
-        let sender = LogSender { id, sender };
+    pub fn add_sender(&mut self, sender: LogSender) {
+        self.send_cache(sender.clone());
+        self.senders.push(sender);
+    }
 
-        let s = sender.clone();
+    fn send_cache(&self, sender: LogSender) {
+        let cache = self.cache.clone();
         Handle::current().spawn(async move {
             for reply in &cache {
-                match s.send(reply.clone()).await {
+                match sender.send(reply.clone()).await {
                     Ok(_) => {}
                     Err(err) => {
                         error!(
@@ -116,8 +122,6 @@ impl LogRelay {
                 }
             }
         });
-
-        self.senders.push(sender);
     }
 
     pub fn remove_sender(&mut self, id: Uuid) {
