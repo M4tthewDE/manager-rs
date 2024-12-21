@@ -154,7 +154,6 @@ impl System for SystemService {
                 tokio::time::sleep(Duration::from_secs(1)).await;
                 debug!("Checking if channel {id} is closed");
                 if tx.is_closed() {
-                    info!("Removing closed sender {id}");
                     match relay.lock() {
                         Ok(mut relay) => {
                             relay.remove_sender(id);
@@ -166,6 +165,8 @@ impl System for SystemService {
                     }
                 }
             }
+
+            info!("Removed closed sender {id}");
         });
 
         let output_stream = ReceiverStream::new(rx);
