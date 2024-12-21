@@ -29,7 +29,7 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
                 if field.name() == "message" {
                     match self.relay.lock() {
                         Ok(mut log_relay) => log_relay.relay(Ok(LogReply {
-                            level: LogLevel::Info.into(),
+                            level: convert_level(event.metadata().level()).into(),
                             text: format!("{:?}", value),
                         })),
                         Err(err) => {
@@ -39,6 +39,16 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
                 }
             },
         );
+    }
+}
+
+fn convert_level(level: &tracing::Level) -> LogLevel {
+    match level {
+        &tracing::Level::TRACE => LogLevel::Info,
+        &tracing::Level::DEBUG => LogLevel::Debug,
+        &tracing::Level::INFO => LogLevel::Info,
+        &tracing::Level::WARN => LogLevel::Warn,
+        &tracing::Level::ERROR => LogLevel::Error,
     }
 }
 
