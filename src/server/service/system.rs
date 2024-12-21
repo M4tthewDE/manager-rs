@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 use tokio_stream::{wrappers::ReceiverStream, Stream};
+use uuid::Uuid;
 
 use crate::{
     proto::{
@@ -16,7 +17,7 @@ use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{config::Config, docker};
 
@@ -134,15 +135,38 @@ impl System for SystemService {
         _: tonic::Request<Empty>,
     ) -> std::result::Result<tonic::Response<Self::LogStream>, tonic::Status> {
         let (tx, rx) = tokio::sync::mpsc::channel(128);
+        let id = Uuid::new_v4();
+        let t = tx.clone();
 
+        info!("Adding sender {id}");
         match self.log_relay.lock() {
             Ok(mut log_relay) => {
-                log_relay.add_sender(tx.clone());
+                log_relay.add_sender(id, t);
             }
             Err(err) => {
-                error!("{err:?}");
+                eprintln!("{err:?}");
             }
         }
+
+        let relay = Arc::clone(&self.log_relay);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                debug!("Checking if channel {id} is closed");
+                if tx.is_closed() {
+                    info!("Removing closed sender {id}");
+                    match relay.lock() {
+                        Ok(mut relay) => {
+                            relay.remove_sender(id);
+                            break;
+                        }
+                        Err(err) => {
+                            eprintln!("{err:?}");
+                        }
+                    }
+                }
+            }
+        });
 
         let output_stream = ReceiverStream::new(rx);
         Ok(Response::new(Box::pin(output_stream) as Self::LogStream))

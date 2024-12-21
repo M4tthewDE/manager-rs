@@ -4,6 +4,7 @@ use tokio::{runtime::Handle, sync::mpsc::Sender};
 use tonic::Status;
 use tracing::{error, Subscriber};
 use tracing_subscriber::Layer;
+use uuid::Uuid;
 
 use crate::proto::{LogLevel, LogReply};
 
@@ -27,12 +28,12 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
             &mut |field: &tracing::field::Field, value: &dyn std::fmt::Debug| {
                 if field.name() == "message" {
                     match self.relay.lock() {
-                        Ok(log_relay) => log_relay.relay(Ok(LogReply {
+                        Ok(mut log_relay) => log_relay.relay(Ok(LogReply {
                             level: LogLevel::Info.into(),
                             text: format!("{:?}", value),
                         })),
                         Err(err) => {
-                            error!("{err:?}");
+                            eprintln!("relay lock error: {err:?}");
                         }
                     }
                 }
@@ -41,31 +42,61 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
     }
 }
 
+#[derive(Clone)]
+pub struct LogSender {
+    id: Uuid,
+    sender: Sender<Result<LogReply, Status>>,
+}
+
+impl LogSender {
+    async fn send(&self, reply: Result<LogReply, Status>) -> anyhow::Result<()> {
+        Ok(self.sender.send(reply).await?)
+    }
+}
+
 #[derive(Default)]
 pub struct LogRelay {
-    senders: Vec<Sender<Result<LogReply, Status>>>,
+    senders: Vec<LogSender>,
 }
 
 impl LogRelay {
-    fn relay(&self, reply: Result<LogReply, Status>) {
+    fn relay(&mut self, reply: Result<LogReply, Status>) {
         let reply = reply.clone();
         let senders = self.senders.clone();
 
         Handle::current().spawn(async move {
-            for sender in &senders {
+            for sender in senders {
                 match sender.send(reply.clone()).await {
                     Ok(_) => {}
                     Err(err) => {
-                        error!(
-                            "log relay send error, we should probably remove the  sender: {err:?}"
-                        )
+                        error!("Log relay send error '{err:?}' to sender {:?}", sender.id);
                     }
                 }
             }
         });
     }
 
-    pub fn add_sender(&mut self, sender: Sender<Result<LogReply, Status>>) {
+    pub fn add_sender(&mut self, id: Uuid, sender: Sender<Result<LogReply, Status>>) {
+        let sender = LogSender { id, sender };
         self.senders.push(sender);
+    }
+
+    pub fn remove_sender(&mut self, id: Uuid) {
+        match self.find_sender(id) {
+            Some(i) => {
+                self.senders.remove(i);
+            }
+            None => error!("Tried to remove sender which does not exist: {id}"),
+        }
+    }
+
+    fn find_sender(&self, id: Uuid) -> Option<usize> {
+        for (i, sender) in self.senders.iter().enumerate() {
+            if sender.id == id {
+                return Some(i);
+            }
+        }
+
+        None
     }
 }

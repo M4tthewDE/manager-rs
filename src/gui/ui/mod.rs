@@ -30,6 +30,7 @@ impl App {
     pub fn log_panel(&self, ctx: &Context) {
         SidePanel::right("log_panel")
             .min_width(600.0)
+            .max_width(800.0)
             .show(ctx, |ui| {
                 ui.heading(RichText::new("Server logs").color(Color32::WHITE));
                 ScrollArea::both()
