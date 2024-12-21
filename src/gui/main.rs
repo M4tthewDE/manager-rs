@@ -1,10 +1,12 @@
 use crate::config::Config;
+use proto::LogReply;
 use state::{log::LogLine, State};
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     time::{Duration, Instant},
 };
 use tokio_stream::StreamExt;
+use tonic::Streaming;
 use tracing::error;
 use update::StateChangeMessage;
 
@@ -30,47 +32,20 @@ fn main() -> Result<()> {
         puffin::set_scopes_on(true);
     }
 
-    let (tx, rx) = mpsc::channel();
-    log_stream(config.server_address.clone(), tx.clone());
+    let app = App::new(config)?;
+    app.start_log_stream();
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([320.0, 240.0]),
         ..Default::default()
     };
 
-    match eframe::run_native(
-        "Server manager",
-        options,
-        Box::new(|_cc| Ok(Box::new(App::new(config, tx, rx)?))),
-    ) {
+    match eframe::run_native("Server manager", options, Box::new(|_cc| Ok(Box::new(app)))) {
         Ok(_) => {}
         Err(err) => error!("{err:?}"),
     };
 
     Ok(())
-}
-
-fn log_stream(server_address: String, tx: Sender<StateChangeMessage>) {
-    let tx = tx.clone();
-    std::thread::spawn(move || {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async {
-                let mut stream = client::info::stream_logs(server_address).await.unwrap();
-                while let Some(log_reply) = stream.next().await {
-                    let log_reply = log_reply.unwrap();
-                    tx.send(Box::new(move |state: &mut State| {
-                        state.server_log.push(LogLine {
-                            level: log_reply.level.into(),
-                            text: log_reply.text,
-                        })
-                    }))
-                    .unwrap();
-                }
-            })
-    });
 }
 
 struct App {
@@ -104,11 +79,8 @@ impl eframe::App for App {
 }
 
 impl App {
-    fn new(
-        config: Config,
-        tx: Sender<StateChangeMessage>,
-        rx: Receiver<StateChangeMessage>,
-    ) -> Result<Self> {
+    fn new(config: Config) -> Result<Self> {
+        let (tx, rx) = mpsc::channel();
         Ok(Self {
             config: config.clone(),
             rt: runtime::Builder::new_multi_thread().enable_all().build()?,
@@ -141,5 +113,40 @@ impl App {
         if let Ok(state_change_msg) = self.rx.try_recv() {
             state_change_msg(&mut self.state);
         }
+    }
+
+    fn start_log_stream(&self) {
+        let server_address = self.config.server_address.clone();
+        let tx = self.tx.clone();
+
+        self.rt.spawn(async move {
+            if let Err(err) = Self::stream_logs(server_address, tx).await {
+                error!("log stream error: {err:?}");
+            }
+        });
+    }
+
+    async fn stream_logs(server_address: String, tx: Sender<StateChangeMessage>) -> Result<()> {
+        let stream = client::info::stream_logs(server_address).await?;
+        Self::handle_log_stream(stream, tx).await
+    }
+
+    async fn handle_log_stream(
+        mut stream: Streaming<LogReply>,
+        tx: Sender<StateChangeMessage>,
+    ) -> Result<()> {
+        while let Some(log_reply) = stream.next().await {
+            let log_reply = log_reply?;
+            let line = LogLine {
+                level: log_reply.level.into(),
+                text: log_reply.text,
+            };
+
+            tx.send(Box::new(move |state: &mut State| {
+                state.server_log.push(line)
+            }))?
+        }
+
+        Ok(())
     }
 }
