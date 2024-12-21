@@ -1,4 +1,4 @@
-use egui::{CentralPanel, Color32, Context, RichText, ScrollArea};
+use egui::{CentralPanel, Color32, Context, RichText, ScrollArea, SidePanel};
 
 use crate::App;
 
@@ -22,10 +22,19 @@ impl App {
                     ui.add_space(10.0);
 
                     self.compose(ui);
-                    ui.add_space(10.0);
+                });
+            });
+        });
+    }
 
-                    ui.heading(RichText::new("Server logs").color(Color32::WHITE));
-                    ui.group(|ui| {
+    pub fn log_panel(&self, ctx: &Context) {
+        SidePanel::right("log_panel")
+            .min_width(600.0)
+            .show(ctx, |ui| {
+                ui.heading(RichText::new("Server logs").color(Color32::WHITE));
+                ScrollArea::both()
+                    .id_source("log_scroll_area")
+                    .show(ui, |ui| {
                         for line in &self.state.server_log.logs {
                             let level_text = match line.level {
                                 crate::state::log::LogLevel::Trace => {
@@ -50,9 +59,7 @@ impl App {
                                 ui.label(&line.text);
                             });
                         }
-                    })
-                });
+                    });
             });
-        });
     }
 }

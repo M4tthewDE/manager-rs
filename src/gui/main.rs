@@ -95,6 +95,7 @@ impl eframe::App for App {
         self.change_state();
 
         self.ui(ctx);
+        self.log_panel(ctx);
 
         if self.config.profiling {
             puffin_egui::profiler_window(ctx);
