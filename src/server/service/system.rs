@@ -12,7 +12,7 @@ use crate::{
         system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
         LogReply, MemoryInfo, Version,
     },
-    subscriber::{LogRelay, LogSender},
+    subscriber::relay::{LogRelay, LogSender},
 };
 use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};

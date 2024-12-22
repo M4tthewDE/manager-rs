@@ -1,59 +1,11 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
+use std::collections::VecDeque;
 
 use tokio::{runtime::Handle, sync::mpsc::Sender};
 use tonic::Status;
-use tracing::{error, Subscriber};
-use tracing_subscriber::Layer;
+use tracing::error;
 use uuid::Uuid;
 
-use crate::proto::{LogLevel, LogReply};
-
-pub struct StreamingLayer {
-    relay: Arc<Mutex<LogRelay>>,
-}
-
-impl StreamingLayer {
-    pub fn new(relay: Arc<Mutex<LogRelay>>) -> Self {
-        Self { relay }
-    }
-}
-
-impl<S: Subscriber> Layer<S> for StreamingLayer {
-    fn on_event(
-        &self,
-        event: &tracing::Event<'_>,
-        _ctx: tracing_subscriber::layer::Context<'_, S>,
-    ) {
-        event.record(
-            &mut |field: &tracing::field::Field, value: &dyn std::fmt::Debug| {
-                if field.name() == "message" {
-                    match self.relay.lock() {
-                        Ok(mut log_relay) => log_relay.relay(Ok(LogReply {
-                            level: convert_level(event.metadata().level()).into(),
-                            text: format!("{:?}", value),
-                        })),
-                        Err(err) => {
-                            eprintln!("relay lock error: {err:?}");
-                        }
-                    }
-                }
-            },
-        );
-    }
-}
-
-fn convert_level(level: &tracing::Level) -> LogLevel {
-    match *level {
-        tracing::Level::TRACE => LogLevel::Info,
-        tracing::Level::DEBUG => LogLevel::Debug,
-        tracing::Level::INFO => LogLevel::Info,
-        tracing::Level::WARN => LogLevel::Warn,
-        tracing::Level::ERROR => LogLevel::Error,
-    }
-}
+use crate::proto::LogReply;
 
 #[derive(Clone)]
 pub struct LogSender {
@@ -80,14 +32,12 @@ pub struct LogRelay {
 }
 
 impl LogRelay {
-    fn relay(&mut self, reply: Result<LogReply, Status>) {
+    pub fn relay(&mut self, reply: Result<LogReply, Status>) {
         if self.cache.len() == MAX_CACHE_SIZE {
             self.cache.pop_front();
         }
 
         self.cache.push_back(reply.clone());
-
-        let reply = reply.clone();
         let senders = self.senders.clone();
 
         Handle::current().spawn(async move {

@@ -4,7 +4,7 @@ use crate::{
     proto::{
         compose_server::ComposeServer, docker_server::DockerServer, system_server::SystemServer,
     },
-    subscriber::LogRelay,
+    subscriber::relay::LogRelay,
 };
 use compose::ComposeService;
 use docker::DockerService;

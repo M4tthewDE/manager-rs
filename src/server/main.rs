@@ -1,6 +1,6 @@
 use config::Config;
 use std::sync::{Arc, Mutex};
-use subscriber::{LogRelay, StreamingLayer};
+use subscriber::{relay::LogRelay, StreamingLayer};
 use tonic::transport::Server;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{
