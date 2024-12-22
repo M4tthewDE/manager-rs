@@ -18,8 +18,8 @@ impl LogSender {
         Self { id, sender }
     }
 
-    async fn send(&self, reply: Result<LogReply, Status>) -> anyhow::Result<()> {
-        Ok(self.sender.send(reply).await?)
+    async fn send(&self, reply: LogReply) -> anyhow::Result<()> {
+        Ok(self.sender.send(Ok(reply)).await?)
     }
 }
 
@@ -27,12 +27,12 @@ const MAX_CACHE_SIZE: usize = 1_000;
 
 #[derive(Default)]
 pub struct LogRelay {
-    cache: VecDeque<Result<LogReply, Status>>,
+    cache: VecDeque<LogReply>,
     senders: Vec<LogSender>,
 }
 
 impl LogRelay {
-    pub fn relay(&mut self, reply: Result<LogReply, Status>) {
+    pub fn relay(&mut self, reply: LogReply) {
         if self.cache.len() == MAX_CACHE_SIZE {
             self.cache.pop_front();
         }

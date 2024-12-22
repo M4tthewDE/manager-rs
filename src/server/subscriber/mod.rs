@@ -28,10 +28,10 @@ impl<S: Subscriber> Layer<S> for StreamingLayer {
             &mut |field: &tracing::field::Field, value: &dyn std::fmt::Debug| {
                 if field.name() == "message" {
                     match self.relay.lock() {
-                        Ok(mut log_relay) => log_relay.relay(Ok(LogReply {
+                        Ok(mut log_relay) => log_relay.relay(LogReply {
                             level: convert_level(event.metadata().level()).into(),
                             text: format!("{:?}", value),
-                        })),
+                        }),
                         Err(err) => {
                             eprintln!("relay lock error: {err:?}");
                         }
