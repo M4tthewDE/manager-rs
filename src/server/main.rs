@@ -11,6 +11,7 @@ use tracing_subscriber::{
 
 mod config;
 mod docker;
+mod info;
 mod service;
 mod subscriber;
 

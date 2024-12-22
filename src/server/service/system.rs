@@ -8,19 +8,15 @@ use tokio_stream::{wrappers::ReceiverStream, Stream};
 use uuid::Uuid;
 
 use crate::{
-    proto::{
-        system_server::System, Cpu, CpuInfo, Disk, DiskInfo, DockerInfo, Empty, InfoReply,
-        LogReply, MemoryInfo, Version,
-    },
+    proto::{system_server::System, Empty, InfoReply, LogReply},
     subscriber::relay::{LogRelay, LogSender},
 };
-use sysinfo::{CpuRefreshKind, Disks, RefreshKind};
 use tonic::{Request, Response, Status};
 
 use anyhow::Result;
 use tracing::{debug, error, info};
 
-use crate::{config::Config, docker};
+use crate::config::Config;
 
 pub struct SystemService {
     info_reply: Arc<Mutex<InfoReply>>,
@@ -32,113 +28,55 @@ impl SystemService {
         let info_reply = Arc::new(Mutex::new(InfoReply::default()));
         let update_interval = Duration::from_millis(config.update_interval);
 
-        info!("Starting info updater with interval {:?}", update_interval);
-        Self::start_updater(update_interval, Arc::clone(&info_reply));
+        let i = Arc::clone(&info_reply);
+        tokio::task::spawn(async move {
+            run_updater(update_interval, i).await;
+        });
 
         Self {
             info_reply,
             log_relay,
         }
     }
+}
 
-    fn start_updater(update_interval: Duration, info: Arc<Mutex<InfoReply>>) {
-        tokio::task::spawn(async move {
-            loop {
-                tokio::time::sleep(update_interval).await;
-                match Self::info().await {
-                    Ok(i) => match info.lock() {
-                        Ok(mut info) => *info = i,
-                        Err(err) => error!("{err:?}"),
-                    },
-                    Err(err) => error!("update error {err:?}"),
+async fn run_updater(update_interval: Duration, info: Arc<Mutex<InfoReply>>) {
+    info!("Starting info updater with interval {:?}", update_interval);
+    loop {
+        tokio::time::sleep(update_interval).await;
+        match crate::info::info().await {
+            Ok(i) => match info.lock() {
+                Ok(mut info) => *info = i,
+                Err(err) => error!("{err:?}"),
+            },
+            Err(err) => error!("update error {err:?}"),
+        }
+    }
+}
+
+async fn run_close_watcher(
+    tx: Sender<Result<LogReply, Status>>,
+    relay: Arc<Mutex<LogRelay>>,
+    id: Uuid,
+) {
+    loop {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        debug!("Checking if channel {id} is closed");
+        if tx.is_closed() {
+            match relay.lock() {
+                Ok(mut relay) => {
+                    relay.remove_sender(id);
+                    break;
                 }
-            }
-        });
-    }
-
-    async fn info() -> Result<InfoReply> {
-        let mut sys = sysinfo::System::new_with_specifics(
-            RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
-        );
-
-        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-        sys.refresh_all();
-
-        Ok(InfoReply {
-            name: sysinfo::System::name().unwrap_or_default(),
-            kernel_version: sysinfo::System::kernel_version().unwrap_or_default(),
-            os_version: sysinfo::System::os_version().unwrap_or_default(),
-            host_name: sysinfo::System::host_name().unwrap_or_default(),
-
-            memory_info: Some(Self::memory_info(&mut sys)),
-            disk_info: Some(Self::disk_info()),
-            cpu_info: Some(Self::cpu_info(&mut sys)),
-            docker_info: Some(docker_info().await?),
-        })
-    }
-
-    fn memory_info(sys: &mut sysinfo::System) -> MemoryInfo {
-        MemoryInfo {
-            total: sys.total_memory(),
-            free: sys.free_memory(),
-            available: sys.available_memory(),
-            used: sys.used_memory(),
-        }
-    }
-
-    fn disk_info() -> DiskInfo {
-        DiskInfo {
-            disks: Disks::new_with_refreshed_list()
-                .list()
-                .iter()
-                .map(|d| Disk {
-                    name: d.name().to_str().unwrap_or_default().to_string(),
-                    kind: d.kind().to_string(),
-                    file_system: d.file_system().to_str().unwrap_or_default().to_string(),
-                    total_space: d.total_space(),
-                    available_space: d.available_space(),
-                })
-                .collect(),
-        }
-    }
-
-    fn cpu_info(sys: &mut sysinfo::System) -> CpuInfo {
-        CpuInfo {
-            cpus: sys
-                .cpus()
-                .iter()
-                .map(|c| Cpu {
-                    name: c.name().to_string(),
-                    cpu_usage: c.cpu_usage(),
-                    frequency: c.frequency(),
-                })
-                .collect(),
-        }
-    }
-
-    async fn close_watcher(
-        tx: Sender<Result<LogReply, Status>>,
-        relay: Arc<Mutex<LogRelay>>,
-        id: Uuid,
-    ) {
-        loop {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            debug!("Checking if channel {id} is closed");
-            if tx.is_closed() {
-                match relay.lock() {
-                    Ok(mut relay) => {
-                        relay.remove_sender(id);
-                        break;
-                    }
-                    Err(err) => {
-                        error!("relay lock error: {err:?}");
-                    }
+                Err(err) => {
+                    error!("relay lock error: {err:?}");
                 }
             }
         }
-
-        info!("Removed closed sender {id}");
     }
+
+    info!("Removed closed sender {id}");
 }
 
 #[tonic::async_trait]
@@ -176,44 +114,10 @@ impl System for SystemService {
 
         let relay = Arc::clone(&self.log_relay);
         tokio::spawn(async move {
-            Self::close_watcher(tx, relay, id).await;
+            run_close_watcher(tx, relay, id).await;
         });
 
         let output_stream = ReceiverStream::new(rx);
         Ok(Response::new(Box::pin(output_stream) as Self::LogStream))
     }
-}
-
-async fn docker_info() -> Result<DockerInfo, Status> {
-    let version: Version = docker::version::version()
-        .await
-        .map_err(|e| Status::from_error(e.into()))?
-        .into();
-
-    let containers = docker::container::list()
-        .await
-        .map_err(|e| Status::from_error(e.into()))?;
-
-    let mut container_list = Vec::new();
-    for c in containers {
-        let logs = docker::container::logs(&c.id)
-            .await
-            .map_err(|e| Status::from_error(e.into()))?;
-        let container = crate::proto::Container {
-            id: c.id.clone(),
-            names: c.names.clone(),
-            image: c.image.clone(),
-            command: c.command.clone(),
-            created: c.created,
-            ports: c.ports.iter().map(crate::proto::Port::from).collect(),
-            status: c.status.clone(),
-            logs,
-        };
-        container_list.push(container);
-    }
-
-    Ok(DockerInfo {
-        version: Some(version),
-        container_list,
-    })
 }
