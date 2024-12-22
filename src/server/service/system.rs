@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use tokio::sync::mpsc::Sender;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use uuid::Uuid;
 
@@ -114,6 +115,30 @@ impl SystemService {
                 .collect(),
         }
     }
+
+    async fn close_watcher(
+        tx: Sender<Result<LogReply, Status>>,
+        relay: Arc<Mutex<LogRelay>>,
+        id: Uuid,
+    ) {
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            debug!("Checking if channel {id} is closed");
+            if tx.is_closed() {
+                match relay.lock() {
+                    Ok(mut relay) => {
+                        relay.remove_sender(id);
+                        break;
+                    }
+                    Err(err) => {
+                        error!("relay lock error: {err:?}");
+                    }
+                }
+            }
+        }
+
+        info!("Removed closed sender {id}");
+    }
 }
 
 #[tonic::async_trait]
@@ -136,37 +161,22 @@ impl System for SystemService {
     ) -> std::result::Result<tonic::Response<Self::LogStream>, tonic::Status> {
         let (tx, rx) = tokio::sync::mpsc::channel(128);
         let id = Uuid::new_v4();
-        let t = tx.clone();
+        let log_sender = LogSender::new(id, tx.clone());
 
         info!("Adding sender {id}");
         match self.log_relay.lock() {
             Ok(mut log_relay) => {
-                log_relay.add_sender(LogSender::new(id, t));
+                log_relay.add_sender(log_sender);
             }
             Err(err) => {
-                eprintln!("{err:?}");
+                error!("relay lock error: {err:?}");
+                return Err(Status::from_error("Lock is poisoned".into()));
             }
         }
 
         let relay = Arc::clone(&self.log_relay);
         tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                debug!("Checking if channel {id} is closed");
-                if tx.is_closed() {
-                    match relay.lock() {
-                        Ok(mut relay) => {
-                            relay.remove_sender(id);
-                            break;
-                        }
-                        Err(err) => {
-                            eprintln!("{err:?}");
-                        }
-                    }
-                }
-            }
-
-            info!("Removed closed sender {id}");
+            Self::close_watcher(tx, relay, id).await;
         });
 
         let output_stream = ReceiverStream::new(rx);

@@ -92,11 +92,8 @@ impl LogRelay {
 
         Handle::current().spawn(async move {
             for sender in senders {
-                match sender.send(reply.clone()).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        error!("Log relay send error '{err:?}' to sender {:?}", sender.id);
-                    }
+                if let Err(err) = sender.send(reply.clone()).await {
+                    error!("Log relay send error '{err:?}' to sender {:?}", sender.id);
                 }
             }
         });
@@ -111,14 +108,11 @@ impl LogRelay {
         let cache = self.cache.clone();
         Handle::current().spawn(async move {
             for reply in &cache {
-                match sender.send(reply.clone()).await {
-                    Ok(_) => {}
-                    Err(err) => {
-                        error!(
-                            "Log relay cache send error '{err:?}' to sender {:?}",
-                            sender.id
-                        );
-                    }
+                if let Err(err) = sender.send(reply.clone()).await {
+                    error!(
+                        "Log relay cache send error '{err:?}' to sender {:?}",
+                        sender.id
+                    );
                 }
             }
         });
