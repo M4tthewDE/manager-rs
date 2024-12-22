@@ -25,6 +25,7 @@ impl App {
                 });
             });
         });
+        self.log_panel(ctx);
     }
 
     pub fn log_panel(&self, ctx: &Context) {
